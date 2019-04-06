@@ -42,9 +42,11 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'subr-x)
 (require 'f)
 (require 'dash)
 (require 'hydra)
+(autoload 'magit-commit "magit-commit")
 
 (declare-function 'magit-commit "magit-commit")
 
@@ -110,9 +112,8 @@
              ;; Which should take precedence? Domain or directory?
              (let ((plist (cdr ent)))
                (or (when url
-                     (let ((domain (find (git-identity--host-in-git-url url)
-                                         (plist-get plist :domains))))
-                       (when domain
+                     (let ((domain (git-identity--host-in-git-url url)))
+                       (when (-contains? (plist-get plist :domains) domain)
                          (message "Chosen an identity based on domain %s in url \"%s\""
                                   domain url)
                          t)))
