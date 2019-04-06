@@ -104,8 +104,7 @@
 
 (defun git-identity--guess-identity ()
   "Pick an identity which seems suitable for the current repo."
-  (let ((repo default-directory)
-        (url (or (git-identity--git-config-get "remote.origin.pushurl")
+  (let ((url (or (git-identity--git-config-get "remote.origin.pushurl")
                  (git-identity--git-config-get "remote.origin.url"))))
     (-some (lambda (ent)
              ;; Which should take precedence? Domain or directory?
@@ -117,10 +116,12 @@
                          (message "Chosen an identity based on domain %s in url \"%s\""
                                   domain url)
                          t)))
-                   (when-let ((ancestor (git-identity--inside-dirs-p repo (plist-get plist :dirs))))
-                     (message "Chosen an identity based on an ancestor directory %s"
-                              ancestor)
-                     t))))
+                   (let ((ancestor (git-identity--inside-dirs-p default-directory
+                                                                (plist-get plist :dirs))))
+                     (when ancestor
+                       (message "Chosen an identity based on an ancestor directory %s"
+                                ancestor)
+                       t)))))
            git-identity-list)))
 
 (defun git-identity--host-in-git-url (url)
