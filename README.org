@@ -1,0 +1,42 @@
+* git-identity.el
+This Emacs package lets you manage local Git identities, i.e. =user.name= and =user.email= options in =.git/config=, inside Emacs. It can be useful if you satisfy all of the following conditions:
+
+- You have multiple Git identities on the same machine(s).
+- You use Emacs.
+- You (almost always) use [[https://magit.vc][magit]] for Git operations on your machine(s).
+
+I found a CLI tool for the same purpose named [[https://github.com/prydonius/karn][karn]], but since Emacs users are likely to run Git operations inside Emacs (and the interface is probably magit), you don't need the CLI. You only need to set a name and an email address before you perform =git-commit=, and it can be implemented as an advice to =magit-commit=. This package is it.
+** Features
+- You can configure multiple identities which are stored in your =custom-file=. No extra dotfile is needed.
+- You can associate identities with repository URLs and local working tree locations.
+- =git-identity-magit-mode= adds a hook to =magit-commit=, so your repository has an identity configured, whether it may be local or global.
+- It provides a command to select an identity in the current repository interactively.
+- It provides a command (actually a hydra) to review your identity quickly and set a new one if necessary.
+** Installation
+This package is not available in MELPA yet.
+** Configuration
+1. Set =git-identity-default-username=, which is used as the default user name for all repositories.
+2. Configure =git-identity-list= variable. You can use =customize-variable= to do that.
+3. Optionally, you can start =git-identity-magit-mode= in your ~/.init.el, which turns on the hook before =magit-status=.
+
+Below is an example configuration using =use-package=:
+
+#+begin_src emacs-lisp
+  (use-package git-identity
+    :config
+    (git-identity-magit-mode 1)
+    ;; Bind I to git-identity-info in magit-status
+    (define-key magit-status-mode-map (kbd "I") 'git-identity-info)
+    :custom
+    (git-identity-default-username "Akira Komamura"))
+
+  ;; And set git-identity-list in your custom-file
+#+end_src
+** Usage
+If you turn on =git-identity-magit-mode=, identity check is performed every time =magit-commit= is invoked.
+
+You can also set the identity manually through =git-identity-set-identity= command.
+
+To check if the repository has an identity, use =git-identity-info= command.
+** License
+GPL v3
