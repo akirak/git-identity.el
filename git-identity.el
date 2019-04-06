@@ -157,8 +157,8 @@
                                       (cons newent git-identity-list)))
           (user-error "Not a valid mail address: %s" input)))))
 
-(defun git-identity--validate-mail-address (input)
-  "Return non-nil if INPUT is a valid e-mail address."
+(defun git-identity--validate-mail-address (_input)
+  "Return non-nil if _INPUT is a valid e-mail address."
   ;; TODO: Really validate the input
   t)
 
@@ -252,10 +252,10 @@ This mode enables the following features:
   (unless (git-identity--has-identity-p)
     (let ((identity (git-identity--guess-identity)))
       (if (and identity
-               (yes-or-no-p "Set the identity in %s to \"%s\" <%s>? "
-                            (git-identity--find-repo)
-                            (git-identity--username identity)
-                            (git-identity--email identity)))
+               (yes-or-no-p (format "Set the identity in %s to \"%s\" <%s>? "
+                                    (git-identity--find-repo)
+                                    (git-identity--username identity)
+                                    (git-identity--email identity))))
           (git-identity--set-identity identity)
         (git-identity-set-identity "user.name and user.email is not set. Select one: ")))))
 
