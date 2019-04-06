@@ -29,7 +29,7 @@
 
 ;; This Emacs package lets you manage local Git identities, i.e.
 ;; user.name and user.email options in .git/config, inside
-;; Emacs. It can be useful if you satisfy all of the following
+;; Emacs.  It can be useful if you satisfy all of the following
 ;; conditions:
 
 ;; - You have multiple Git identities on the same machine(s).
@@ -163,7 +163,15 @@
 
 ;;;###autoload
 (defun git-identity-set-identity (&optional prompt)
-  "Set the identity for the repository at the working directory."
+  "Set the identity for the repository at the working directory.
+
+This function lets the user choose an identity for the current
+repository using `git-identity-complete' function and sets the
+user name and the email address in the local configuration of the
+Git repository.
+
+Optionally, you can set PROMPT for the identity.
+If it is omitted, the default prompt is used."
   (interactive)
   (let ((root (git-identity--find-repo)))
     (unless root
@@ -175,7 +183,7 @@
       (git-identity--set-identity identity))))
 
 (defun git-identity--has-identity-p ()
-  "If the current repository has an identity"
+  "Return non-nil If the current repository has an identity."
   (and (git-identity--git-config-get "user.name")
        (git-identity--git-config-get "user.email")))
 
