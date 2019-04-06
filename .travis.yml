@@ -19,6 +19,7 @@ env:
   - EMACS_VERSION=26.1
   - EMACS_VERSION=snapshot
 before_install:
+- sudo apt install gnutls-bin
 - curl -OL https://raw.githubusercontent.com/vermiculus/emake.el/master/build-emacs
 # You generally don't want 'x' in your own projects, but for the
 # purposes of actually developing `build-emacs', it's useful
