@@ -54,16 +54,19 @@
 
 ;;;; Custom vars
 
+;;;###autoload
 (defcustom git-identity-git-executable "git"
   "Executable file of Git."
   :group 'git-identity
   :type 'string)
 
+;;;###autoload
 (defcustom git-identity-default-username nil
   "Default full name of the user."
   :group 'git-identity
   :type 'string)
 
+;;;###autoload
 (defcustom git-identity-list nil
   "List of plists of Git identities."
   :group 'git-identity
@@ -94,7 +97,7 @@
   "Retrieve the default user name."
   (or git-identity-default-username
       (customize-set-variable
-       git-identity-default-username
+       'git-identity-default-username
        (read-string "Enter your full name used as the default: "))))
 
 ;;;; Guessing identity for the current repository
@@ -123,11 +126,11 @@
 (defun git-identity--host-in-git-url (url)
   "Extract the host from URL of a Git repository."
   (cond
-   ((string-match (rx bol "https://" (group (+ (not (char "/:"))))) url)
+   ((string-match (rx bol "https://" (group (+ (not (any "/:"))))) url)
 
     (match-string 1 url))
-   ((string-match (rx bol (?  (+ (not (char "@:"))) "@")
-                      (group (+ (not (char ":"))))) url)
+   ((string-match (rx bol (?  (+ (not (any "@:"))) "@")
+                      (group (+ (not (any ":"))))) url)
     (match-string 1 url))))
 
 (defun git-identity--inside-dirs-p (target maybe-ancestors)
@@ -196,7 +199,7 @@
 Git identity in %s(git-identity--find-repo)
 =======================================================
 User name: %(git-identity--git-config-get \"user.name\")
-E-mail: %(git-identity--git-config-get \"user.email\")
+E-mail: %s(git-identity--git-config-get \"user.email\")
 -------------------------------------------------------
 "
   ("s" git-identity-set-identity "Set an identity")
@@ -248,15 +251,17 @@ This mode enables the following features:
         (git-identity-set-identity "user.name and user.email is not set. Select one: ")))))
 
 ;;;; Git utilities
-(defun git-identity--git-config-set (pairs)
+(defun git-identity--git-config-set (&rest pairs)
   "Set a PAIRS of Git options."
-  (cl-loop for (key value) on pairs by #'cddr
-           do (git-identity--run-git "config" "--local" "--add" key value))
-  (message "Set the following Git options in %s:\n%s"
-           (git-identity--find-repo)
-           (mapconcat (lambda (pair) (format "%s=%s" (car pair) (cdr pair)))
-                      (-partition 2 pairs)
-                      "\n")))
+  (unless (yes-or-no-p (format "Are you sure you want to set the following Git options in %s?\n\n%s"
+                               (git-identity--find-repo)
+                               (mapconcat (pcase-lambda (`(,key ,value))
+                                            (format "%s=%s" key value))
+                                          (-partition 2 pairs)
+                                          "\n")))
+    (user-error "Aborted"))
+  (cl-loop for (key value . _) on pairs by #'cddr
+           do (git-identity--run-git "config" "--local" "--add" key value)))
 
 (defun git-identity--run-git (&rest args)
   "Run Git with ARGS."
