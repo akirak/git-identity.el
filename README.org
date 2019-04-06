@@ -1,29 +1,34 @@
 * git-identity.el
 [[https://travis-ci.org/akirak/git-identity.el][https://travis-ci.org/akirak/git-identity.el.svg?branch=master]]
-This Emacs package lets you manage local Git identities, i.e. =user.name= and =user.email= options in =.git/config=, inside Emacs. It can be useful if you satisfy all of the following conditions:
+
+This Emacs package lets you manage local Git identities, i.e. =user.name= and =user.email= options in =.git/config=, inside Emacs. 
+It can be useful if you satisfy all of the following conditions:
 
 - You have multiple Git identities on the same machine(s).
 - You use Emacs.
 - You (almost always) use [[https://magit.vc][magit]] for Git operations on your machine(s).
 
-I found a CLI tool for the same purpose named [[https://github.com/prydonius/karn][karn]], but since Emacs users are likely to run Git operations inside Emacs (and the interface is probably magit), you don't need the CLI. You only need to set a name and an email address before you perform =git-commit=, and it can be implemented as an advice to =magit-commit=. This package is it.
+I found a CLI tool for the same purpose named [[https://github.com/prydonius/karn][karn]], but since Emacs users are likely to run Git operations inside Emacs (and the interface is probably Magit), 
+it would be better if you had a solution integrated into Emacs.
+You only need to set a name and an email address before you perform =git-commit=, and if you use Emacs and Magit, it can be implemented by advising =magit-commit=. This package solves the problem. Now you don't need a global Git configuration file to set your name and email address.
 ** Features
-- You can configure multiple identities which are stored in your =custom-file=. No extra dotfile is needed.
-- You can associate identities with repository URLs and local working tree locations.
-- =git-identity-magit-mode= adds a hook to =magit-commit=, so your repository has an identity configured, whether it may be local or global.
-- It provides a command to select an identity in the current repository interactively.
+- You can configure multiple identities which are stored possibly in your =custom-file=. No extra dotfile is needed. If you work on multiple machines, you can maintain per-host configuration by just having separate custom files.
+- You can associate identities with repository host names and/or local working tree locations.
+- =git-identity-magit-mode= adds a =:before= hook to =magit-commit= to ensure that a given repository gets an identity before =git-commit= is run.
+- For manual operation, it provides a command to select an identity in the current repository interactively.
 - It provides a command (actually a hydra) to review your identity quickly and set a new one if necessary.
 ** Installation
 This package is not available in MELPA yet.
 ** Configuration
 1. Set =git-identity-default-username=, which is used as the default user name for all repositories.
-2. Configure =git-identity-list= variable. You can use =customize-variable= to do that.
-3. Optionally, you can start =git-identity-magit-mode= in your ~/.init.el, which turns on the hook before =magit-status=.
+2. Configure =git-identity-list= variable. You can use =customize-variable=. Each entry consists of a mandatory e-mail address and options. The user name is optional, and if it is omitted, the default user name is set along with the e-mail address. You can associate repository hosts and/or local repository locations with the identity, which are used to pick an identity for a given repository.
+3. Optionally, you can start =git-identity-magit-mode= in your =~/.emacs.d/.init.el=, which turns on the hook run before =magit-status=.
 
 Below is an example configuration using =use-package=:
 
 #+begin_src emacs-lisp
   (use-package git-identity
+    :after magit
     :config
     (git-identity-magit-mode 1)
     ;; Bind I to git-identity-info in magit-status
@@ -34,10 +39,11 @@ Below is an example configuration using =use-package=:
   ;; And set git-identity-list in your custom-file
 #+end_src
 ** Usage
-If you turn on =git-identity-magit-mode=, identity check is performed every time =magit-commit= is invoked.
+If you turn on =git-identity-magit-mode=, git-identity checks for an identity every time =magit-commit= is invoked.
+If there is no local identity setting but a global one, the latter is used, so it won't prompt for an identity.
 
 You can also set the identity manually through =git-identity-set-identity= command.
 
-To check if the repository has an identity, use =git-identity-info= command.
+To check what name and e-mail address are set on the repository, use =git-identity-info= command.
 ** License
 GPL v3
