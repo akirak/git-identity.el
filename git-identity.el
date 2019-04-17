@@ -106,7 +106,7 @@
   "Pick an identity which seems suitable for the current repo."
   (let ((url (or (git-identity--git-config-get "remote.origin.pushurl")
                  (git-identity--git-config-get "remote.origin.url"))))
-    (-some (lambda (ent)
+    (-find (lambda (ent)
              ;; Which should take precedence? Domain or directory?
              (let ((plist (cdr ent)))
                (or (when url
