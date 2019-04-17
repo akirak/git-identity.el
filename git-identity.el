@@ -75,15 +75,13 @@
   :type '(repeat
           (cons :tag "Identity setting"
                 (string :tag "E-mail address (user.email)")
-                (set (cons :tag "Override name (user.name)"
-                           (const :tag "Full name" :name)
-                           string)
-                     (cons :tag "Matching domains"
-                           (const :tag "Host names" :domains)
-                           (repeat string))
-                     (cons :tag "Ancestor directories"
-                           (const :tag "Directories" :dirs)
-                           (repeat string))))))
+                (plist :options
+                       (((const :tag "Full name" :name)
+                         string)
+                        ((const :tag "Host names" :domains)
+                         (repeat string))
+                        ((const :tag "Directories" :dirs)
+                         (repeat string)))))))
 
 ;;;; Identity operations
 (defun git-identity--username (identity)
