@@ -83,6 +83,11 @@
                         ((const :tag "Directories" :dirs)
                          (repeat string)))))))
 
+(defcustom git-identity-verify t
+  "When non-nil, check if the identity is consistent."
+  :group 'git-identity
+  :type 'boolean)
+
 ;;;; Identity operations
 (defun git-identity--username (identity)
   "Extract the user name in IDENTITY or return the default."
@@ -248,7 +253,17 @@ This mode enables the following features:
 
 (defun git-identity-ensure-internal ()
   "Ensure that the current repository has an identity."
-  (unless (git-identity--has-identity-p)
+  (when (or (let ((local-email (git-identity--git-config-get "user.email" "--local"))
+                  (global-email (git-identity--git-config-get "user.email" "--global"))
+                  (expected (car (git-identity--guess-identity))))
+              (and git-identity-verify
+                   (not local-email)
+                   (not (equal expected global-email))
+                   (yes-or-no-p
+                    (format "This repository is should have an identity of '%s',\
+ but actually '%s' is used due to the global setting.\nDo you want to change it?"
+                            expected global-email))))
+            (not (git-identity--has-identity-p)))
     (let ((identity (git-identity--guess-identity)))
       (if (and identity
                (yes-or-no-p (format "Set the identity in %s to \"%s\" <%s>? "
@@ -275,11 +290,11 @@ This mode enables the following features:
   "Run Git with ARGS."
   (apply #'call-process git-identity-git-executable nil nil nil args))
 
-(defun git-identity--git-config-get (key)
+(defun git-identity--git-config-get (key &optional scope)
   "Get the value of a Git option KEY."
   (with-temp-buffer
-    (when (= 0 (call-process git-identity-git-executable nil t nil
-                             "config" "--get" key))
+    (when (= 0 (apply #'call-process git-identity-git-executable nil t nil
+                      (delq nil `("config" "--get" ,scope ,key))))
       (string-trim-right (buffer-string)))))
 
 (provide 'git-identity)
