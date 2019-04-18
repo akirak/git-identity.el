@@ -72,16 +72,21 @@
 (defcustom git-identity-list nil
   "List of plists of Git identities."
   :group 'git-identity
-  :type '(repeat
-          (cons :tag "Identity setting"
-                (string :tag "E-mail address (user.email)")
-                (plist :options
-                       (((const :tag "Full name" :name)
-                         string)
-                        ((const :tag "Host names" :domains)
-                         (repeat string))
-                        ((const :tag "Directories" :dirs)
-                         (repeat string)))))))
+  :type '(alist :tag "Identity setting"
+                :key-type (string :tag "E-mail address (user.email)")
+                :value-type (plist :tag "Options"
+                                   :options
+                                   (((const :tag "Full name" :name)
+                                     string)
+                                    ((const :tag "Host names" :domains)
+                                     (repeat string))
+                                    ((const :tag "Directories" :dirs)
+                                     (repeat string))))))
+
+(defcustom git-identity-verify t
+  "When non-nil, check if the identity is consistent."
+  :group 'git-identity
+  :type 'boolean)
 
 ;;;; Identity operations
 (defun git-identity--username (identity)
@@ -248,15 +253,38 @@ This mode enables the following features:
 
 (defun git-identity-ensure-internal ()
   "Ensure that the current repository has an identity."
-  (unless (git-identity--has-identity-p)
-    (let ((identity (git-identity--guess-identity)))
-      (if (and identity
-               (yes-or-no-p (format "Set the identity in %s to \"%s\" <%s>? "
-                                    (git-identity--find-repo)
-                                    (git-identity--username identity)
-                                    (git-identity--email identity))))
+  (let ((local-email (git-identity--git-config-get "user.email" "--local"))
+        (global-email (git-identity--git-config-get "user.email" "--global"))
+        (expected-identity (git-identity--guess-identity)))
+    (cond
+     ;; No identity is configured yet, but there is an expected identity.
+     ((not (git-identity--has-identity-p))
+      (if (and expected-identity
+               (yes-or-no-p
+                (format "Set the identity in %s to \"%s\" <%s>? "
+                        (git-identity--find-repo)
+                        (git-identity--username identity)
+                        (git-identity--email identity))))
           (git-identity--set-identity identity)
-        (git-identity-set-identity "user.name and user.email is not set. Select one: ")))))
+        (git-identity-set-identity "A proper identity is not set. Select one: ")))
+     ;; There is no local setting, and the global setting is contradictory
+     ;; with the expectation. Ask if you want to apply the local setting.
+     ((and git-identity-verify
+           (not local-email)
+           (not (equal (git-identity--email expected-identity)
+                       global-email))
+           (yes-or-no-p
+            (format "This repository (%s) is supposed to have an identity of\n\
+\"%s\", but \"%s\" is about to be used \n\
+because of a global setting.\n\
+Apply the expected identity \"%s\" <%s>\n\
+to this repository? "
+                    (git-identity--find-repo)
+                    (git-identity--email expected-identity)
+                    global-email
+                    (git-identity--username expected-identity)
+                    (git-identity--email expected-identity))))
+      (git-identity--set-identity expected-identity)))))
 
 ;;;; Git utilities
 (defun git-identity--git-config-set (&rest pairs)
@@ -275,11 +303,15 @@ This mode enables the following features:
   "Run Git with ARGS."
   (apply #'call-process git-identity-git-executable nil nil nil args))
 
-(defun git-identity--git-config-get (key)
-  "Get the value of a Git option KEY."
+(defun git-identity--git-config-get (key &optional scope)
+  "Get the value of a Git option.
+
+KEY is the name of the option, and optional SCOPE is a string passed
+as an argument to Git command to specify the scope, which is either
+\"--global\" or \"--local\"."
   (with-temp-buffer
-    (when (= 0 (call-process git-identity-git-executable nil t nil
-                             "config" "--get" key))
+    (when (= 0 (apply #'call-process git-identity-git-executable nil t nil
+                      (delq nil `("config" "--get" ,scope ,key))))
       (string-trim-right (buffer-string)))))
 
 (provide 'git-identity)
