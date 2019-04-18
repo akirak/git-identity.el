@@ -253,25 +253,38 @@ This mode enables the following features:
 
 (defun git-identity-ensure-internal ()
   "Ensure that the current repository has an identity."
-  (when (or (let ((local-email (git-identity--git-config-get "user.email" "--local"))
-                  (global-email (git-identity--git-config-get "user.email" "--global"))
-                  (expected (car (git-identity--guess-identity))))
-              (and git-identity-verify
-                   (not local-email)
-                   (not (equal expected global-email))
-                   (yes-or-no-p
-                    (format "This repository is should have an identity of '%s',\
- but actually '%s' is used due to the global setting.\nDo you want to change it?"
-                            expected global-email))))
-            (not (git-identity--has-identity-p)))
-    (let ((identity (git-identity--guess-identity)))
-      (if (and identity
-               (yes-or-no-p (format "Set the identity in %s to \"%s\" <%s>? "
-                                    (git-identity--find-repo)
-                                    (git-identity--username identity)
-                                    (git-identity--email identity))))
+  (let ((local-email (git-identity--git-config-get "user.email" "--local"))
+        (global-email (git-identity--git-config-get "user.email" "--global"))
+        (expected-identity (git-identity--guess-identity)))
+    (cond
+     ;; No identity is configured yet, but there is an expected identity.
+     ((not (git-identity--has-identity-p))
+      (if (and expected-identity
+               (yes-or-no-p
+                (format "Set the identity in %s to \"%s\" <%s>? "
+                        (git-identity--find-repo)
+                        (git-identity--username identity)
+                        (git-identity--email identity))))
           (git-identity--set-identity identity)
-        (git-identity-set-identity "user.name and user.email is not set. Select one: ")))))
+        (git-identity-set-identity "A proper identity is not set. Select one: ")))
+     ;; There is no local setting, and the global setting is contradictory
+     ;; with the expectation. Ask if you want to apply the local setting.
+     ((and git-identity-verify
+           (not local-email)
+           (not (equal (git-identity--email expected-identity)
+                       global-email))
+           (yes-or-no-p
+            (format "This repository (%s) is supposed to have an identity of\n\
+\"%s\", but \"%s\" is about to be used \n\
+because of a global setting.\n\
+Apply the expected identity \"%s\" <%s>\n\
+to this repository? "
+                    (git-identity--find-repo)
+                    (git-identity--email expected-identity)
+                    global-email
+                    (git-identity--username expected-identity)
+                    (git-identity--email expected-identity))))
+      (git-identity--set-identity expected-identity)))))
 
 ;;;; Git utilities
 (defun git-identity--git-config-set (&rest pairs)
