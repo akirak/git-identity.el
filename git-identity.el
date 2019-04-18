@@ -72,16 +72,16 @@
 (defcustom git-identity-list nil
   "List of plists of Git identities."
   :group 'git-identity
-  :type '(repeat
-          (cons :tag "Identity setting"
-                (string :tag "E-mail address (user.email)")
-                (plist :options
-                       (((const :tag "Full name" :name)
-                         string)
-                        ((const :tag "Host names" :domains)
-                         (repeat string))
-                        ((const :tag "Directories" :dirs)
-                         (repeat string)))))))
+  :type '(alist :tag "Identity setting"
+                :key-type (string :tag "E-mail address (user.email)")
+                :value-type (plist :tag "Options"
+                                   :options
+                                   (((const :tag "Full name" :name)
+                                     string)
+                                    ((const :tag "Host names" :domains)
+                                     (repeat string))
+                                    ((const :tag "Directories" :dirs)
+                                     (repeat string))))))
 
 (defcustom git-identity-verify t
   "When non-nil, check if the identity is consistent."
