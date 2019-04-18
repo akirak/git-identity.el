@@ -214,7 +214,7 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
   ("C" (customize-variable 'git-identity-list)
    "Configure your identities"))
 
-;;;###autoload
+;;;###autoload (autoload 'git-identity-info "git-identity")
 (defalias 'git-identity-info 'git-identity-hydra/body
   "Display the identity information of the current repository.")
 
