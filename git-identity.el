@@ -263,9 +263,9 @@ This mode enables the following features:
                (yes-or-no-p
                 (format "Set the identity in %s to \"%s\" <%s>? "
                         (git-identity--find-repo)
-                        (git-identity--username identity)
-                        (git-identity--email identity))))
-          (git-identity--set-identity identity)
+                        (git-identity--username expected-identity)
+                        (git-identity--email expected-identity))))
+          (git-identity--set-identity expected-identity)
         (git-identity-set-identity "A proper identity is not set. Select one: ")))
      ;; There is no local setting, and the global setting is contradictory
      ;; with the expectation. Ask if you want to apply the local setting.
