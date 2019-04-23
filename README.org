@@ -19,7 +19,7 @@ You only need to set a name and an email address before you perform =git-commit=
 - For manual operation, it provides a command to select an identity in the current repository interactively.
 - It provides a command (actually a hydra) to review your identity quickly and set a new one if necessary.
 ** Installation
-This package is not available in MELPA yet.
+Install from MELPA.
 ** Configuration
 1. Set =git-identity-default-username=, which is used as the default user name for all repositories.
 2. Configure =git-identity-list= variable. You can use =customize-variable=. Each entry consists of a mandatory e-mail address and options. The user name is optional, and if it is omitted, the default user name is set along with the e-mail address. You can associate repository hosts and/or local repository locations with the identity, which are used to pick an identity for a given repository.
@@ -35,9 +35,19 @@ Below is an example configuration using =use-package=:
     ;; Bind I to git-identity-info in magit-status
     (define-key magit-status-mode-map (kbd "I") 'git-identity-info)
     :custom
+    ;; Warn if the global identity setting violates your policy
+    (git-identity-verify t)
+    ;; The default user name
     (git-identity-default-username "Akira Komamura"))
 
-  ;; And set git-identity-list in your custom-file
+  ;; And set git-identity-list in your custom-file or init file
+  (setq git-identity-list
+        '(("my.personal.address@gmail.com"
+           :domains ("github.com")
+           :dirs ("~/.emacs.d" "~/personal"))
+          ("my.name@mycompany.com"
+           :domains ("mycompany.com")
+           :dirs ("~/work"))))
 #+end_src
 ** Usage
 If you turn on =git-identity-magit-mode=, git-identity checks for an identity every time =magit-commit= is invoked.
