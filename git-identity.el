@@ -83,7 +83,18 @@
                                      (repeat string))))))
 
 (defcustom git-identity-verify t
-  "When non-nil, check if the identity is consistent."
+  "When non-nil, check if the identity is consistent.
+
+This check is run if the repository doesn't have a local
+identity.
+If the repository is expected to have a certain
+identity according to the domain name or the local directory (see
+`git-identity-list'), and the identity is different from the
+global setting, `git-identity-magit-mode' asks if you want to
+add a local identity setting to the repository.
+This ensures that your identity policies defined in
+`git-identity-list' are applied properly when you have a global
+identity setting."
   :group 'git-identity
   :type 'boolean)
 
