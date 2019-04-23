@@ -46,7 +46,6 @@
 (require 'f)
 (require 'dash)
 (require 'hydra)
-(autoload 'magit-commit "magit-commit")
 
 (declare-function 'magit-commit "magit-commit")
 
