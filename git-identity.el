@@ -62,8 +62,11 @@
   :type 'string)
 
 ;;;###autoload
-(defcustom git-identity-default-username nil
-  "Default full name of the user."
+(defcustom git-identity-default-username
+  (when (and (stringp user-full-name)
+             (not (string-empty-p user-full-name)))
+    user-full-name)
+  "Default full name of the user set in Git repositories."
   :group 'git-identity
   :type 'string)
 
@@ -113,7 +116,11 @@ identity setting."
   (or git-identity-default-username
       (customize-set-variable
        'git-identity-default-username
-       (read-string "Enter your full name used as the default: "))))
+       (read-string "Enter your full name used as the default: "
+                    nil nil
+                    (when (and (stringp user-full-name)
+                               (not (string-empty-p user-full-name)))
+                      user-full-name)))))
 
 ;;;; Guessing identity for the current repository
 
