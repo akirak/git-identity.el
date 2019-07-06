@@ -149,6 +149,14 @@ identity setting."
                (when bufw
                  (quit-window nil bufw))
                (kill-buffer buf))))))))
+(defcustom git-identity-repository-read-function nil
+  "Function used to read a repository URL in the package.
+
+This should be a function that returns a string.
+
+If this value is nil, the built-in function is used."
+  :group 'git-identity
+  :type '(or function nil))
 
 ;;;; Identity operations
 (defun git-identity--username (identity)
@@ -216,6 +224,17 @@ identity is found."
                              default-directory ent
                              :log log)))
                       git-identity-list)))
+
+(cl-defun git-identity--guess-identity-for-url (url &optional (log t))
+  "Pick an identity from the URL.
+
+URL is a Git repository URL.
+
+When LOG is nil, suppress the log message shown when a matching
+identity is found."
+  (-find (lambda (ent)
+           (git-identity--identity-match-url-p url ent :log log))
+         git-identity-list))
 
 (defun git-identity--repository-remote-url ()
   "Get a URL of the origin repository if any."
@@ -480,6 +499,37 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
                        global-email)))
       (git-identity--set-identity expected-identity
           :prompt "The global identity violates the expected local identity of this repository. Set the local identity above? ")))))
+
+;;;; Cloning Git repositories
+;;;###autoload
+(defun git-identity-clone (url)
+  "Clone URL to a destination depending on its URL."
+  (interactive (list (git-identity--read-repository-url)))
+  ;; Find a matching identity
+  (let* ((identity (or (git-identity--guess-identity-for-url url)
+                       (git-identity-complete
+                        (format "Choose an identity for %s: " url))))
+         (dirs (git-identity--dirs identity))
+         (parent (completing-read (format "Select a cloning destination for %s: "
+                                          url)
+                                  dirs))
+         (dest (read-directory-name (format "Enter a non-existent directory path for %s: "
+                                            url)
+                                    parent
+                                    nil nil
+                                    ;; TODO: Get the default name from the URL
+                                    nil)))
+    ;; TODO: Set the identity in the local repository.
+    ;; I'll probably have to send a PR to magit package to implement this feature.
+    ;;
+    ;; TODO: Allow setting options (or allow choosing a clone command).
+    (magit-clone-regular url dest nil)))
+
+(defun git-identity--read-repository-url ()
+  "Read a Git repository URL."
+  (if (functionp git-identity-repository-read-function)
+      (funcall git-identity-repository-read-function)
+    (read-string "Repository URL: ")))
 
 ;;;; Git utilities
 (defun git-identity--git-config-set-no-confirm (&rest pairs)
