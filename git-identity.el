@@ -78,9 +78,29 @@
                                    :options
                                    (((const :tag "Full name" :name)
                                      string)
-                                    ((const :tag "Host names" :domains)
+                                    ((const :tag "Targets" :targets)
+                                     (repeat
+                                      (list
+                                       (choice (symbol :tag "Domain"
+                                                       domain)
+                                               (symbol :tag "Regexp on URL"
+                                                       regexp))
+                                       (string :tag "Domain or regexp")
+                                       (string :tag "Local path")
+                                       (plist :tag "More options"
+                                              :inline t
+                                              :options
+                                              (((const :tag "Clone level"
+                                                       :clone-level)
+                                                integer)
+                                               ((const :tag "Alternative local paths"
+                                                       :alt-dirs)
+                                                (repeat string)))))))
+                                    ((const :tag "Host names (deprecated)"
+                                            :domains)
                                      (repeat string))
-                                    ((const :tag "Directories" :dirs)
+                                    ((const :tag "Directories (deprecated)"
+                                            :dirs)
                                      (repeat string))))))
 
 (defcustom git-identity-verify t
@@ -158,7 +178,8 @@ If this value is nil, the built-in function is used."
   :group 'git-identity
   :type '(or function nil))
 
-;;;; Identity operations
+;;;; Operations on data types
+;;;;; Identities
 (defun git-identity--username (identity)
   "Extract the user name in IDENTITY or return the default."
   (or (plist-get (cdr identity) :name)
@@ -184,6 +205,46 @@ If this value is nil, the built-in function is used."
 
 (defun git-identity--dirs (identity)
   (plist-get (cdr identity) :dirs))
+
+(defun git-identity--targets (identity)
+  "Get the targets from IDENTITY."
+  (plist-get (cdr identity) :targets))
+
+;;;;; Targets
+(defun git-identity--target-type (target)
+  (nth 0 target))
+
+(defun git-identity--target-loc-spec (target)
+  (nth 1 target))
+
+(defun git-identity--target-primary-dir (target)
+  (nth 2 target))
+
+(defun git-identity--target-options (target)
+  (-drop 3 target))
+
+(defun git-identity--target-clone-level (target)
+  (plist-get (git-identity--target-options target) :clone-level))
+
+(defun git-identity--target-alt-dirs (target)
+  (plist-get (git-identity--target-options target) :alt-paths))
+
+;;;;;; Predicates
+(defun git-identity--target-match-url-p (target url)
+  "Return non-nil if TARGET matches URL."
+  (cl-case (git-identity--target-type target)
+    ('domain (let ((hostname (git-identity--host-in-git-url url))
+                   (regexp (concat "\.?"
+                                   (regexp-quote (git-identity--target-loc-spec target))
+                                   "$")))
+               (string-match-p regexp hostname)))
+    ('regexp (string-match-p (cdar target) url))))
+
+(defun git-identity--target-match-directory-p (target directory)
+  "Return non-nil if TARGET matches DIRECTORY."
+  (git-identity--inside-dirs-p
+   directory (cons (git-identity--target-primary-dir target)
+                   (git-identity--target-alt-dirs target))))
 
 ;;;; Guessing identity for the current repository
 
@@ -249,12 +310,14 @@ supported Git URL, and ENTRY is an identity entry.
 
 If LOG is t, display a message in the minibuffer when the entry
 matches."
-  (let ((domain (git-identity--host-in-git-url url)))
-    (when (-contains? (git-identity--domains entry) domain)
-      (when log
-        (message "Chosen an identity based on domain %s in url \"%s\""
-                 domain url))
-      t)))
+  (when (or (-find (lambda (target)
+                     (git-identity--target-match-url-p target url))
+                   (git-identity--targets entry))
+            (let ((domain (git-identity--host-in-git-url url)))
+              (-contains? (git-identity--domains entry) domain)))
+    (when log
+      (message "Chosen an identity based on URL"))
+    t))
 
 (cl-defun git-identity--identity-match-directory (dir entry &key log)
   "Return non-nil if an identity entry matches the directory.
@@ -264,12 +327,14 @@ ENTRY is an identity entry.
 
 If LOG is t, display a message in the minibuffer when the entry
 matches."
-  (let* ((ancestor (git-identity--inside-dirs-p
-                    dir (git-identity--dirs entry))))
+  (let* ((ancestor (or (-find (lambda (target)
+                                (git-identity--target-match-directory-p target dir))
+                              (git-identity--targets entry))
+                       (git-identity--inside-dirs-p
+                        dir (git-identity--dirs entry)))))
     (when ancestor
       (when log
-        (message "Chosen an identity based on an ancestor directory %s"
-                 ancestor))
+        (message "Chosen an identity based on an ancestor directory"))
       t)))
 
 (defun git-identity--host-in-git-url (url)
