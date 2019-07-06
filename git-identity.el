@@ -232,7 +232,10 @@ User name: %(git-identity--git-config-get \"user.name\")
 E-mail: %s(git-identity--git-config-get \"user.email\")
 -------------------------------------------------------
 "
-  ("s" git-identity-set-identity "Set an identity")
+  ("s" (progn
+         (git-identity-set-identity)
+         (hydra-keyboard-quit))
+   "Set an identity")
   ("C" (customize-variable 'git-identity-list)
    "Configure your identities"))
 
