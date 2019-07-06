@@ -171,6 +171,12 @@ identity setting."
                                (not (string-empty-p user-full-name)))
                       user-full-name)))))
 
+(defun git-identity--domains (identity)
+  (plist-get (cdr identity) :domains))
+
+(defun git-identity--dirs (identity)
+  (plist-get (cdr identity) :dirs))
+
 ;;;; Guessing identity for the current repository
 
 (cl-defun git-identity--guess-identity (&key verbose)
@@ -194,7 +200,58 @@ identity setting."
                          (message "Chosen an identity based on an ancestor directory %s"
                                   ancestor))
                        t)))))
-           git-identity-list)))
+           (cl-defun git-identity--guess-identity (&optional (log t))
+             "Pick an identity which seems suitable for the current repo.
+
+When LOG is nil, suppress the log message shown when a matching
+identity is found."
+             (let ((url (git-identity--repository-remote-url)))
+               (-find (lambda (ent)
+                        ;; Which should take precedence? Domain or directory?
+                        (or (when url
+                              (git-identity--identity-match-url-p
+                               url ent
+                               :log log))
+                            (git-identity--identity-match-directory
+                             default-directory ent
+                             :log log)))
+                      git-identity-list)))
+
+(defun git-identity--repository-remote-url ()
+  "Get a URL of the origin repository if any."
+  (or (git-identity--git-config-get "remote.origin.pushurl")
+      (git-identity--git-config-get "remote.origin.url")))
+
+(cl-defun git-identity--identity-match-url-p (url entry &key log)
+  "Return non-nil if an identity entry matches the url.
+
+URL is the location of the Git repository which should be a
+supported Git URL, and ENTRY is an identity entry.
+
+If LOG is t, display a message in the minibuffer when the entry
+matches."
+  (let ((domain (git-identity--host-in-git-url url)))
+    (when (-contains? (git-identity--domains entry) domain)
+      (when log
+        (message "Chosen an identity based on domain %s in url \"%s\""
+                 domain url))
+      t)))
+
+(cl-defun git-identity--identity-match-directory (dir entry &key log)
+  "Return non-nil if an identity entry matches the directory.
+
+DIR is the path to the Git repository on a local file system, and
+ENTRY is an identity entry.
+
+If LOG is t, display a message in the minibuffer when the entry
+matches."
+  (let* ((ancestor (git-identity--inside-dirs-p
+                    dir (git-identity--dirs entry))))
+    (when ancestor
+      (when log
+        (message "Chosen an identity based on an ancestor directory %s"
+                 ancestor))
+      t)))
 
 (defun git-identity--host-in-git-url (url)
   "Extract the host from URL of a Git repository."
