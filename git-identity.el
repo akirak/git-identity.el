@@ -201,9 +201,11 @@ If this value is nil, the built-in function is used."
                       user-full-name)))))
 
 (defun git-identity--domains (identity)
+  "Get the domains from IDENTITY."
   (plist-get (cdr identity) :domains))
 
 (defun git-identity--dirs (identity)
+  "Get the directories from IDENTITY."
   (plist-get (cdr identity) :dirs))
 
 (defun git-identity--targets (identity)
