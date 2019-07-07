@@ -47,7 +47,10 @@ Below is an example configuration using =use-package=:
            :dirs ("~/.emacs.d" "~/personal"))
           ("my.name@mycompany.com"
            :domains ("mycompany.com")
-           :dirs ("~/work"))))
+           :dirs ("~/work"))
+          ("liwenbin@xxx12345.cn"
+           ;; Chinese name for cool Chinese sites!
+           :name "刘文彬")))
 #+end_src
 ** Usage
 If you turn on =git-identity-magit-mode=, git-identity checks for an identity every time =magit-commit= is invoked.
