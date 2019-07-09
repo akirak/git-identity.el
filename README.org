@@ -48,7 +48,7 @@ Below is an example configuration using =use-package=:
           ("my.name@mycompany.com"
            :domains ("mycompany.com")
            :dirs ("~/work"))
-          ("liwenbin@xxx12345.cn"
+          ("liuwenbin@xxx12345.cn"
            ;; Chinese name for cool Chinese sites!
            :name "刘文彬")))
 #+end_src
