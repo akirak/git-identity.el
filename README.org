@@ -52,6 +52,8 @@ Below is an example configuration using =use-package=:
            ;; Chinese name for cool Chinese sites!
            :name "刘文彬")))
 #+end_src
+
+Note: The format of =git-identity-list= is going to be changed in an upcoming version. See [[https://github.com/akirak/git-identity.el/issues/2][#2]] for details.
 ** Usage
 If you turn on =git-identity-magit-mode=, git-identity checks for an identity every time =magit-commit= is invoked.
 If there is no local identity setting but a global one, the latter is used, so it won't prompt for an identity.
