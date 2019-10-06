@@ -206,8 +206,8 @@ If it is omitted, the default prompt is used."
 
 (defun git-identity--has-identity-p ()
   "Return non-nil If the current repository has an identity."
-  (and (git-identity--git-config-get "user.name")
-       (git-identity--git-config-get "user.email")))
+  (and (git-identity--git-config-get "user.name" "--local")
+       (git-identity--git-config-get "user.email" "--local")))
 
 (defun git-identity--find-repo (&optional startdir)
   "Find a Git working directory which is STARTDIR or its ancestor."
