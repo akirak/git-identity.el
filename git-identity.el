@@ -99,6 +99,53 @@ identity setting."
   :group 'git-identity
   :type 'boolean)
 
+;;;; Faces
+(defface git-identity-bold-face
+  '((t :inherit bold))
+  "Face for bold text.")
+
+(defface git-identity-success-face
+  '((t :inherit success))
+  "Face for identity information consistent with the expected.")
+
+(defface git-identity-warning-face
+  '((t :inherit warning))
+  "Face for identity information inconsistent with the expected.")
+
+(defface git-identity-local-identity-face
+  '((t :bold t :inherit success))
+  "Face for bold text.")
+
+(defface git-identity-global-identity-face
+  '((t :bold t :inherit default))
+  "Face for bold text.")
+
+;;;; Macros
+(defmacro git-identity--with-extra-message (string &rest progn)
+  (declare (indent 1))
+  `(let ((buf (when ,string (generate-new-buffer "*git identity info*"))))
+     (save-window-excursion
+       (unwind-protect
+           (progn
+             (when buf
+               (when (and (bound-and-true-p lv-wnd)
+                          (window-live-p lv-wnd))
+                 (delete-window lv-wnd))
+               (with-current-buffer buf
+                 (setq-local header-line-format nil)
+                 (setq-local mode-line-format nil)
+                 (setq cursor-type nil)
+                 (insert (string-trim ,string)))
+               (display-buffer-at-bottom buf nil)
+               (fit-window-to-buffer (get-buffer-window buf)))
+             ,@progn)
+         (when buf
+           (progn
+             (let ((bufw (get-buffer-window buf)))
+               (when bufw
+                 (quit-window nil bufw))
+               (kill-buffer buf))))))))
+
 ;;;; Identity operations
 (defun git-identity--username (identity)
   "Extract the user name in IDENTITY or return the default."
@@ -214,17 +261,92 @@ If it is omitted, the default prompt is used."
         startdir
       (locate-dominating-file startdir ".git"))))
 
-(defun git-identity--set-identity (identity &optional noconfirm)
-  "Set the identity in the current repo.
+(cl-defun git-identity--set-identity (identity &key no-confirm prompt)
+  "Set the identity in the current repo to IDENTITY."
+  (declare (indent 2))
+  (when (or no-confirm
+            (git-identity--with-extra-message
+                (git-identity--format-repository-identity identity)
+              (yes-or-no-p
+               (or prompt "Are you sure you want to set these settings in .git/config?"))))
+    (git-identity--git-config-set-no-confirm
+     "user.name" (git-identity--username identity)
+     "user.email" (git-identity--email identity))))
 
-IDENTITY is an identity.
+(defun git-identity--pad-string (str width)
+  "Left-pad STR to WIDTH.
 
-When NOCONFIRM is non-nil, confirmation is skipped."
-  (funcall (if noconfirm
-               #'git-identity--git-config-set-noconfirm
-             #'git-identity--git-config-set)
-           "user.name" (git-identity--username identity)
-           "user.email" (git-identity--email identity)))
+The string can be nil.  In that case, it is considered as an empty
+string, so the entire width will be filled up with whitespaces."
+  (let* ((str (or str ""))
+         (len (length str)))
+    (if (< len width)
+        (concat str (make-string (- width len) ?\ ))
+      str)))
+
+(defun git-identity--format-repository-identity (&optional expected-identity description)
+  "Return the string to summarize the identity information of the repository.
+
+EXPECTED-IDENTITY is an identity object to represent the expected
+identity of the repository.
+
+DESCRIPTION is a string to describe the current situation of the
+identity setting."
+  (let* ((repo (abbreviate-file-name (git-identity--find-repo)))
+         (origin (or (git-identity--git-config-get "remote.origin.pushurl" "--local")
+                     (git-identity--git-config-get "remote.origin.url" "--local")))
+         (local-name (git-identity--git-config-get "user.name" "--local"))
+         (local-email (git-identity--git-config-get "user.email" "--local"))
+         (global-name (git-identity--git-config-get "user.name" "--global"))
+         (global-email (git-identity--git-config-get "user.email" "--global"))
+         (expected-name (when expected-identity (git-identity--username expected-identity)))
+         (expected-email (when expected-identity (git-identity--email expected-identity)))
+         (current-name (or local-name global-name))
+         (current-email (or local-email global-email))
+         (width1 (when expected-identity
+                   (max (length current-name) (length current-email))))
+         (width2 (when expected-identity
+                   (max (length expected-name) (length expected-email))))
+         (has-local local-email))
+    (string-join `(,(concat "Repository " repo)
+                   ,(concat "Origin: " (or origin "Not set"))
+                   ,(if expected-identity
+                        (concat
+                         " +" (make-string (+ 14 width1 width2) ?-) "+\n"
+                         (mapconcat (pcase-lambda (`(,header ,current ,expected))
+                                      (string-join (list ""
+                                                         (git-identity--pad-string header 6)
+                                                         (git-identity--pad-string current width1)
+                                                         (git-identity--pad-string expected width2)
+                                                         "")
+                                                   " | "))
+                                    `((nil "Current" "Expected")
+                                      ("Name"
+                                       ,(propertize (or current-name "N/A")
+                                                    'face
+                                                    (if (equal current-name expected-name)
+                                                        'git-identity-success-face
+                                                      'git-identity-warning-face))
+                                       ,expected-name)
+                                      ("E-mail"
+                                       ,(propertize (or current-email "N/A")
+                                                    'face
+                                                    (if (equal current-email expected-email)
+                                                        'git-identity-success-face
+                                                      'git-identity-warning-face))
+                                       ,expected-email))
+                                    "\n")
+                         "\n +" (make-string (+ 14 width1 width2) ?-) "+")
+                      (if (and current-name current-email)
+                          (format "Current: %s <%s>" current-name current-email)
+                        "Current: Missing"))
+                   ,(if (and current-name current-email)
+                        (format "The current identity is based on the %s gitconfig."
+                                (if has-local
+                                    (propertize "local" 'face 'git-identity-local-identity-face)
+                                  (propertize "global" 'face 'git-identity-global-identity-face)))
+                      "Cannot find the current identity."))
+                 "\n")))
 
 ;;;; Hydra
 
@@ -271,49 +393,27 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
            (string-equal (or local-name global-name)
                          (git-identity--username expected-identity))))
      ((not (git-identity--has-identity-p))
-      (if (and expected-identity
-               (yes-or-no-p
-                (format "Set the identity in %s to \"%s\" <%s>? "
-                        (git-identity--find-repo)
-                        (git-identity--username expected-identity)
-                        (git-identity--email expected-identity))))
-          (git-identity--set-identity expected-identity 'noconfirm)
-        (git-identity-set-identity "A proper identity is not set. Select one: ")))
+      (or (and expected-identity
+               (git-identity--set-identity expected-identity
+                               :prompt "This repository lacks an expected local identity. Set the identity above?"))
+          (git-identity-set-identity "A proper identity is not set. Select one: ")))
      ;; There is no local setting, and the global setting is contradictory
      ;; with the expectation. Ask if you want to apply the local setting.
      ((and git-identity-verify
            (not local-email)
            (not (equal (git-identity--email expected-identity)
-                       global-email))
-           (yes-or-no-p
-            (format "This repository (%s) is supposed to have an identity of\n\
-\"%s\", but \"%s\" is about to be used \n\
-because of a global setting.\n\
-Apply the expected identity \"%s\" <%s>\n\
-to this repository? "
-                    (git-identity--find-repo)
-                    (git-identity--email expected-identity)
-                    global-email
-                    (git-identity--username expected-identity)
-                    (git-identity--email expected-identity))))
-      (git-identity--set-identity expected-identity 'noconfirm)))))
+                       global-email)))
+      (git-identity--set-identity expected-identity
+                      :prompt "The global identity violates the expected local identity of this repository. Set the local identity above? ")))))
 
 ;;;; Git utilities
-(defun git-identity--git-config-set (&rest pairs)
-  "Set a PAIRS of Git options."
-  (unless (yes-or-no-p (format "Are you sure you want to set the following Git options in %s?\n\n%s"
-                               (git-identity--find-repo)
-                               (mapconcat (pcase-lambda (`(,key ,value))
-                                            (format "%s=%s" key value))
-                                          (-partition 2 pairs)
-                                          "\n")))
-    (user-error "Aborted"))
-  (apply #'git-identity--git-config-set-noconfirm pairs))
+(defun git-identity--git-config-set-no-confirm (&rest pairs)
+  "Set a PAIRS of Git options without user confirmation.
 
-(defun git-identity--git-config-set-noconfirm (&rest pairs)
-  "Set a PAIRS of Git options without confirmation."
+When successful, this function returns PAIRS."
   (cl-loop for (key value . _) on pairs by #'cddr
-           do (git-identity--run-git "config" "--local" key value)))
+           do (git-identity--run-git "config" "--local" "--add" key value))
+  pairs)
 
 (defun git-identity--run-git (&rest args)
   "Run Git with ARGS."
