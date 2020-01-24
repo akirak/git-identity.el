@@ -274,10 +274,17 @@ This mode enables the following features:
 (defun git-identity-ensure-internal ()
   "Ensure that the current repository has an identity."
   (let ((local-email (git-identity--git-config-get "user.email" "--local"))
+        (local-name (git-identity--git-config-get "user.name" "--local"))
         (global-email (git-identity--git-config-get "user.email" "--global"))
+        (global-name (git-identity--git-config-get "user.name" "--global"))
         (expected-identity (git-identity--guess-identity)))
     (cond
      ;; No identity is configured yet, but there is an expected identity.
+     ((and (or local-email global-email)
+           (string-equal (or local-email global-email)
+                         (git-identity--email expected-identity))
+           (string-equal (or local-name global-name)
+                         (git-identity--username expected-identity))))
      ((not (git-identity--has-identity-p))
       (if (and expected-identity
                (yes-or-no-p
