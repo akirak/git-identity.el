@@ -62,5 +62,10 @@ If there is no local identity setting but a global one, the latter is used, so i
 You can also set the identity manually through =git-identity-set-identity= command.
 
 To check what name and e-mail address are set on the repository, use =git-identity-info= command.
+** Changelog
+*** 0.1.1 [2020-01-25 Sat]
+- Fix the bug of duplicate confirmation in setting an expected identity.
+- Fix the bug of trying to set an identity when the global identity is the same as an expected identity.
+- Add a separate =git-identity-magit.el= for a linting reason.
 ** License
 GPL v3
