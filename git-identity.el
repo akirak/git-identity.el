@@ -5,7 +5,7 @@
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
 ;; Version: 0.1
 ;; Package-Requires: ((emacs "25.1") (dash "2.10") (hydra "0.14") (f "0.20"))
-;; Keywords: vc convenience
+;; Keywords: git vc convenience
 ;; URL: https://github.com/akirak/git-identity.el
 
 ;; This file is not part of GNU Emacs.
@@ -46,8 +46,6 @@
 (require 'f)
 (require 'dash)
 (require 'hydra)
-
-(declare-function 'magit-commit "magit-commit")
 
 (defgroup git-identity nil
   "Identity management for Git."
@@ -216,11 +214,17 @@ If it is omitted, the default prompt is used."
         startdir
       (locate-dominating-file startdir ".git"))))
 
-(defun git-identity--set-identity (identity)
-  "Set the identity in the current repo to IDENTITY."
-  (git-identity--git-config-set
-   "user.name" (git-identity--username identity)
-   "user.email" (git-identity--email identity)))
+(defun git-identity--set-identity (identity &optional noconfirm)
+  "Set the identity in the current repo.
+
+IDENTITY is an identity.
+
+When NOCONFIRM is non-nil, confirmation is skipped."
+  (funcall (if noconfirm
+               #'git-identity--git-config-set-noconfirm
+             #'git-identity--git-config-set)
+           "user.name" (git-identity--username identity)
+           "user.email" (git-identity--email identity)))
 
 ;;;; Hydra
 
@@ -251,33 +255,21 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
 
 (advice-add #'git-identity-info :around #'git-identity--block-if-not-in-repo)
 
-
 ;;;; Mode definition
-;;;###autoload
-(define-minor-mode git-identity-magit-mode
-  "Global minor mode for running Git identity checks in Magit.
-
-This mode enables the following features:
-
-- Add a hook to `magit-commit' to ensure that you have a
-  global/local identity configured in the repository.
-"
-  :global t
-  (cond
-   ;; Activate the mode
-   (git-identity-magit-mode
-    (advice-add #'magit-commit :before #'git-identity-ensure-internal))
-   ;; Deactivate the mode
-   (t
-    (advice-remove #'magit-commit #'git-identity-ensure-internal))))
-
-(defun git-identity-ensure-internal ()
+(defun git-identity-ensure ()
   "Ensure that the current repository has an identity."
   (let ((local-email (git-identity--git-config-get "user.email" "--local"))
+        (local-name (git-identity--git-config-get "user.name" "--local"))
         (global-email (git-identity--git-config-get "user.email" "--global"))
+        (global-name (git-identity--git-config-get "user.name" "--global"))
         (expected-identity (git-identity--guess-identity)))
     (cond
      ;; No identity is configured yet, but there is an expected identity.
+     ((and (or local-email global-email)
+           (string-equal (or local-email global-email)
+                         (git-identity--email expected-identity))
+           (string-equal (or local-name global-name)
+                         (git-identity--username expected-identity))))
      ((not (git-identity--has-identity-p))
       (if (and expected-identity
                (yes-or-no-p
@@ -285,7 +277,7 @@ This mode enables the following features:
                         (git-identity--find-repo)
                         (git-identity--username expected-identity)
                         (git-identity--email expected-identity))))
-          (git-identity--set-identity expected-identity)
+          (git-identity--set-identity expected-identity 'noconfirm)
         (git-identity-set-identity "A proper identity is not set. Select one: ")))
      ;; There is no local setting, and the global setting is contradictory
      ;; with the expectation. Ask if you want to apply the local setting.
@@ -304,7 +296,7 @@ to this repository? "
                     global-email
                     (git-identity--username expected-identity)
                     (git-identity--email expected-identity))))
-      (git-identity--set-identity expected-identity)))))
+      (git-identity--set-identity expected-identity 'noconfirm)))))
 
 ;;;; Git utilities
 (defun git-identity--git-config-set (&rest pairs)
@@ -316,8 +308,12 @@ to this repository? "
                                           (-partition 2 pairs)
                                           "\n")))
     (user-error "Aborted"))
+  (apply #'git-identity--git-config-set-noconfirm pairs))
+
+(defun git-identity--git-config-set-noconfirm (&rest pairs)
+  "Set a PAIRS of Git options without confirmation."
   (cl-loop for (key value . _) on pairs by #'cddr
-           do (git-identity--run-git "config" "--local" "--add" key value)))
+           do (git-identity--run-git "config" "--local" key value)))
 
 (defun git-identity--run-git (&rest args)
   "Run Git with ARGS."

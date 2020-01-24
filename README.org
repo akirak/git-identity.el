@@ -1,6 +1,7 @@
 * git-identity.el
 [[https://melpa.org/#/git-identity][file:https://melpa.org/packages/git-identity-badge.svg]]
-[[https://travis-ci.org/akirak/git-identity.el][https://travis-ci.org/akirak/git-identity.el.svg?branch=master]]
+
+[[https://github.com/akirak/git-identity.el/workflows/lint/badge.svg?branch=master]]
 
 This Emacs package lets you manage local Git identities, i.e. =user.name= and =user.email= options in =.git/config=, inside Emacs. 
 It can be useful if you satisfy all of the following conditions:
