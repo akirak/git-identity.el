@@ -1,9 +1,9 @@
 ;;; git-identity.el --- Identity management for (ma)git -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019 Akira Komamura
+;; Copyright (C) 2019,2020 Akira Komamura
 
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
-;; Version: 0.1
+;; Version: 0.1.1
 ;; Package-Requires: ((emacs "25.1") (dash "2.10") (hydra "0.14") (f "0.20"))
 ;; Keywords: git vc convenience
 ;; URL: https://github.com/akirak/git-identity.el
