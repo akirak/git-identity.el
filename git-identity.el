@@ -216,11 +216,17 @@ If it is omitted, the default prompt is used."
         startdir
       (locate-dominating-file startdir ".git"))))
 
-(defun git-identity--set-identity (identity)
-  "Set the identity in the current repo to IDENTITY."
-  (git-identity--git-config-set
-   "user.name" (git-identity--username identity)
-   "user.email" (git-identity--email identity)))
+(defun git-identity--set-identity (identity &optional noconfirm)
+  "Set the identity in the current repo.
+
+IDENTITY is an identity.
+
+When NOCONFIRM is non-nil, confirmation is skipped."
+  (funcall (if noconfirm
+               #'git-identity--git-config-set-noconfirm
+             #'git-identity--git-config-set)
+           "user.name" (git-identity--username identity)
+           "user.email" (git-identity--email identity)))
 
 ;;;; Hydra
 
@@ -292,7 +298,7 @@ This mode enables the following features:
                         (git-identity--find-repo)
                         (git-identity--username expected-identity)
                         (git-identity--email expected-identity))))
-          (git-identity--set-identity expected-identity)
+          (git-identity--set-identity expected-identity 'noconfirm)
         (git-identity-set-identity "A proper identity is not set. Select one: ")))
      ;; There is no local setting, and the global setting is contradictory
      ;; with the expectation. Ask if you want to apply the local setting.
@@ -311,7 +317,7 @@ to this repository? "
                     global-email
                     (git-identity--username expected-identity)
                     (git-identity--email expected-identity))))
-      (git-identity--set-identity expected-identity)))))
+      (git-identity--set-identity expected-identity 'noconfirm)))))
 
 ;;;; Git utilities
 (defun git-identity--git-config-set (&rest pairs)
@@ -323,6 +329,10 @@ to this repository? "
                                           (-partition 2 pairs)
                                           "\n")))
     (user-error "Aborted"))
+  (apply #'git-identity--git-config-set-noconfirm pairs))
+
+(defun git-identity--git-config-set-noconfirm (&rest pairs)
+  "Set a PAIRS of Git options without confirmation."
   (cl-loop for (key value . _) on pairs by #'cddr
            do (git-identity--run-git "config" "--local" "--add" key value)))
 
