@@ -5,7 +5,7 @@
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
 ;; Version: 0.1
 ;; Package-Requires: ((emacs "25.1") (dash "2.10") (hydra "0.14") (f "0.20"))
-;; Keywords: vc convenience
+;; Keywords: git vc convenience
 ;; URL: https://github.com/akirak/git-identity.el
 
 ;; This file is not part of GNU Emacs.
@@ -46,8 +46,6 @@
 (require 'f)
 (require 'dash)
 (require 'hydra)
-
-(declare-function 'magit-commit "magit-commit")
 
 (defgroup git-identity nil
   "Identity management for Git."
@@ -257,27 +255,8 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
 
 (advice-add #'git-identity-info :around #'git-identity--block-if-not-in-repo)
 
-
 ;;;; Mode definition
-;;;###autoload
-(define-minor-mode git-identity-magit-mode
-  "Global minor mode for running Git identity checks in Magit.
-
-This mode enables the following features:
-
-- Add a hook to `magit-commit' to ensure that you have a
-  global/local identity configured in the repository.
-"
-  :global t
-  (cond
-   ;; Activate the mode
-   (git-identity-magit-mode
-    (advice-add #'magit-commit :before #'git-identity-ensure-internal))
-   ;; Deactivate the mode
-   (t
-    (advice-remove #'magit-commit #'git-identity-ensure-internal))))
-
-(defun git-identity-ensure-internal ()
+(defun git-identity-ensure ()
   "Ensure that the current repository has an identity."
   (let ((local-email (git-identity--git-config-get "user.email" "--local"))
         (local-name (git-identity--git-config-get "user.name" "--local"))
