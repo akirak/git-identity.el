@@ -334,7 +334,7 @@ to this repository? "
 (defun git-identity--git-config-set-noconfirm (&rest pairs)
   "Set a PAIRS of Git options without confirmation."
   (cl-loop for (key value . _) on pairs by #'cddr
-           do (git-identity--run-git "config" "--local" "--add" key value)))
+           do (git-identity--run-git "config" "--local" key value)))
 
 (defun git-identity--run-git (&rest args)
   "Run Git with ARGS."
