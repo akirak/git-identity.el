@@ -53,13 +53,11 @@
 
 ;;;; Custom vars
 
-;;;###autoload
 (defcustom git-identity-git-executable "git"
   "Executable file of Git."
   :group 'git-identity
   :type 'string)
 
-;;;###autoload
 (defcustom git-identity-default-username
   (when (and (stringp user-full-name)
              (not (string-empty-p user-full-name)))
@@ -68,7 +66,41 @@
   :group 'git-identity
   :type 'string)
 
-;;;###autoload
+(define-widget 'git-identity-local-location 'lazy
+  "Local repository location."
+  :type '(list :tag "Local location"
+               :inline t
+               (directory :tag "Local directory")
+               (plist :inline t
+                      :options
+                      (((const :tag "Clone level" :level)
+                        integer)))))
+
+(define-widget 'git-identity-host-type 'lazy
+  "Type of repository hosting service."
+  :type '(choice (const :tag "GitHub" github)
+                 (const :tag "GitLab" gitlab)))
+
+(define-widget 'git-identity-target 'lazy
+  "Configuration of a repository hosting service."
+  :type '(plist :inline t
+                :options
+                (((const :tag "Type of service"
+                         :type)
+                  git-identity-host-type)
+                 ((const :tag "Domain"
+                         :domain)
+                  string)
+                 ((const :tag "Regexp on URL"
+                         :regexp)
+                  regexp)
+                 ((const :tag "Your account name"
+                         :login)
+                  string)
+                 ((const :tag "Local paths with properties"
+                         :local-paths)
+                  (repeat git-identity-local-location)))))
+
 (defcustom git-identity-list nil
   "List of plists of Git identities."
   :group 'git-identity
@@ -79,29 +111,13 @@
                                    (((const :tag "Full name" :name)
                                      string)
                                     ((const :tag "Targets" :targets)
-                                     (repeat
-                                      (list
-                                       (choice (symbol :tag "Domain"
-                                                       domain)
-                                               (symbol :tag "Regexp on URL"
-                                                       regexp))
-                                       (string :tag "Domain or regexp")
-                                       (string :tag "Local path")
-                                       (plist :tag "More options"
-                                              :inline t
-                                              :options
-                                              (((const :tag "Clone level"
-                                                       :clone-level)
-                                                integer)
-                                               ((const :tag "Alternative local paths"
-                                                       :alt-dirs)
-                                                (repeat string)))))))
+                                     (repeat git-identity-target))
                                     ((const :tag "Host names (deprecated)"
                                             :domains)
                                      (repeat string))
                                     ((const :tag "Directories (deprecated)"
                                             :dirs)
-                                     (repeat string))))))
+                                     (repeat directory))))))
 
 (defcustom git-identity-verify t
   "When non-nil, check if the identity is consistent.
@@ -505,6 +521,68 @@ identity setting."
                                   (propertize "global" 'face 'git-identity-global-identity-face)))
                       "Cannot find the current identity."))
                  "\n")))
+
+;;;; Help configuring identities
+(defun git-identity-add-identity ()
+  "Configure a new identity interactively."
+  (interactive)
+  (let* ((email (completing-read "E-mail (Enter a new one): "
+                                 (mapcar #'git-identity--email git-identity-list)
+                                 nil nil
+                                 (git-identity--git-config-get "user.email" "--global")))
+         (_ (when (member email (mapcar #'git-identity--email git-identity-list))
+              (user-error "%s is already configured" email)))
+         (name (completing-read "Full name: "
+                                (mapcar #'git-identity--username git-identity-list)
+                                nil nil
+                                git-identity-default-username))
+         (result (list email)))
+    (when (and name (not (string-empty-p name)))
+      (setcdr result (list :name name)))
+    (add-to-list 'git-identity-list result 'append)
+    (git-identity--maybe-save-identities)
+    (message (substitute-command-keys "You can add sites to the identity with \[git-identity-add-github-target]"))))
+
+(defun git-identity--maybe-save-identities ()
+  "Confirm the user to save `git-identity-list' for future sessions."
+  (funcall (if (yes-or-no-p "Save the new value to custom-file for future sessions? ")
+               #'customize-save-variable
+             #'customize-set-variable)
+           'git-identity-list git-identity-list
+           "Set by git-identity-add-identity."))
+
+(defun git-identity-add-github-target (email)
+  "Add a GitHub target associated with EMAIL."
+  (interactive (list (completing-read "Choose an identity: "
+                                      (mapcar #'git-identity--email git-identity-list)
+                                      nil t)))
+  (let* ((default-directory "~")
+         (type 'github)
+         (domain (read-string "Domain: " "github.com"))
+         (login (read-string "Your login: "))
+         (local-paths (list (list (abbreviate-file-name
+                                   (read-directory-name "Location: "))
+                                  :level
+                                  (read-number "Level: " 1))))
+         (identity (assoc email git-identity-list))
+         (targets (plist-get (cdr identity) :targets))
+         result)
+    (while (yes-or-no-p "Add more location?")
+      (push local-paths (list (abbreviate-file-name
+                               (read-directory-name "Location: "))
+                              :level
+                              (read-number "Level: " 1))))
+    (setq result (list :type type
+                       :domain domain
+                       :login (when (and login (not (string-empty-p login)))
+                                login)
+                       :local-paths (nreverse local-paths)))
+    (if targets
+        (setcdr targets (append (cdr targets) (list result)))
+      (cl-remprop 'identity :targets)
+      (setcdr identity (append (cdr identity)
+                               (list :targets (list result)))))
+    (git-identity--maybe-save-identities)))
 
 ;;;; Hydra
 
