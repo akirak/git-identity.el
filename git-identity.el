@@ -251,7 +251,7 @@ If it is omitted, the default prompt is used."
                           (format "Select an identity in %s: " root)))))
       (git-identity--set-identity identity))))
 
-(defun git-identity--has-identity-p ()
+(defun git-identity--has-local-identity-p ()
   "Return non-nil If the current repository has an identity."
   (and (git-identity--git-config-get "user.name" "--local")
        (git-identity--git-config-get "user.email" "--local")))
@@ -388,17 +388,20 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
         (global-name (git-identity--git-config-get "user.name" "--global"))
         (expected-identity (git-identity--guess-identity)))
     (cond
-     ;; No identity is configured yet, but there is an expected identity.
-     ((and (or local-email global-email)
+     ;; There is an expected identity, and it matches the identity
+     ;; effective in the repository.
+     ((and expected-identity
+           (or local-email global-email)
            (string-equal (or local-email global-email)
                          (git-identity--email expected-identity))
            (string-equal (or local-name global-name)
                          (git-identity--username expected-identity))))
-     ((not (git-identity--has-identity-p))
+     ;; No local identity is configured yet, but there is an expected identity.
+     ((not (git-identity--has-local-identity-p))
       (or (and expected-identity
                (git-identity--set-identity expected-identity
-                               :prompt "This repository lacks an expected local identity. Set the identity above?"))
-          (git-identity-set-identity "A proper identity is not set. Select one: ")))
+                   :prompt "This repository lacks an expected local identity. Set the identity above?"))
+          (git-identity-set-identity "No proper identity is not set. Select one: ")))
      ;; There is no local setting, and the global setting is contradictory
      ;; with the expectation. Ask if you want to apply the local setting.
      ((and git-identity-verify
@@ -406,7 +409,7 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
            (not (equal (git-identity--email expected-identity)
                        global-email)))
       (git-identity--set-identity expected-identity
-                      :prompt "The global identity violates the expected local identity of this repository. Set the local identity above? ")))))
+          :prompt "The global identity violates the expected local identity of this repository. Set the local identity above? ")))))
 
 ;;;; Git utilities
 (defun git-identity--git-config-set-no-confirm (&rest pairs)
