@@ -109,7 +109,11 @@ identity setting."
   "Face for identity information consistent with the expected.")
 
 (defface git-identity-warning-face
-  '((t :inherit warning))
+  '((t :underline (:style wave :color "Red1") :inherit warning))
+  "Face for identity information inconsistent with the expected.")
+
+(defface git-identity-mismatch-face
+  '((t :underline (:style wave :color "Red1") :inherit default))
   "Face for identity information inconsistent with the expected.")
 
 (defface git-identity-local-identity-face
@@ -329,14 +333,20 @@ identity setting."
                                                     (if (equal current-name expected-name)
                                                         'git-identity-success-face
                                                       'git-identity-warning-face))
-                                       ,expected-name)
+                                       ,(if (equal current-name expected-name)
+                                            expected-name
+                                          (propertize expected-name
+                                                      'face 'git-identity-mismatch-face)))
                                       ("E-mail"
                                        ,(propertize (or current-email "N/A")
                                                     'face
                                                     (if (equal current-email expected-email)
                                                         'git-identity-success-face
                                                       'git-identity-warning-face))
-                                       ,expected-email))
+                                       ,(if (equal current-email expected-email)
+                                            expected-email
+                                          (propertize expected-email
+                                                      'face 'git-identity-mismatch-face))))
                                     "\n")
                          "\n +" (make-string (+ 14 width1 width2) ?-) "+")
                       (if (and current-name current-email)
