@@ -326,7 +326,10 @@ identity setting."
                                                          (git-identity--pad-string expected width2)
                                                          "")
                                                    " | "))
-                                    `((nil "Current" "Expected")
+                                    `((nil ,(if has-local
+                                                "Current (local) "
+                                              "Current (global)")
+                                           "Expected")
                                       ("Name"
                                        ,(propertize (or current-name "N/A")
                                                     'face
