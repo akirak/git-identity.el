@@ -169,7 +169,7 @@ identity setting."
 
 ;;;; Guessing identity for the current repository
 
-(defun git-identity--guess-identity ()
+(cl-defun git-identity--guess-identity (&key verbose)
   "Pick an identity which seems suitable for the current repo."
   (let ((url (or (git-identity--git-config-get "remote.origin.pushurl")
                  (git-identity--git-config-get "remote.origin.url"))))
@@ -179,14 +179,16 @@ identity setting."
                (or (when url
                      (let ((domain (git-identity--host-in-git-url url)))
                        (when (-contains? (plist-get plist :domains) domain)
-                         (message "Chosen an identity based on domain %s in url \"%s\""
-                                  domain url)
+                         (when verbose
+                           (message "Chosen an identity based on domain %s in url \"%s\""
+                                    domain url))
                          t)))
                    (let ((ancestor (git-identity--inside-dirs-p default-directory
                                                                 (plist-get plist :dirs))))
                      (when ancestor
-                       (message "Chosen an identity based on an ancestor directory %s"
-                                ancestor)
+                       (when verbose
+                         (message "Chosen an identity based on an ancestor directory %s"
+                                  ancestor))
                        t)))))
            git-identity-list)))
 
@@ -214,7 +216,7 @@ identity setting."
   (let ((input (completing-read prompt git-identity-list
                                 nil nil nil nil
                                 (car
-                                 (git-identity--guess-identity)))))
+                                 (git-identity--guess-identity :verbose t)))))
     (or (assoc input git-identity-list)
         (if (git-identity--validate-mail-address input)
             (let* ((name (read-string "Name: "))
