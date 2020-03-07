@@ -4,7 +4,7 @@
 
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
 ;; Version: 0.1.1
-;; Package-Requires: ((emacs "25.1") (dash "2.10") (hydra "0.14") (f "0.20"))
+;; Package-Requires: ((emacs "25.1") (dash "2.10") (dash-functional "2.10") (hydra "0.14") (f "0.20"))
 ;; Keywords: git vc convenience
 ;; URL: https://github.com/akirak/git-identity.el
 
@@ -45,27 +45,60 @@
 (require 'subr-x)
 (require 'f)
 (require 'dash)
+(require 'dash-functional)
 (require 'hydra)
+(require 'eieio)
 
 (defgroup git-identity nil
   "Identity management for Git."
   :group 'vc)
 
-;;;; Custom vars
+;;;; Class definition
 
-(defcustom git-identity-git-executable "git"
-  "Executable file of Git."
-  :group 'git-identity
-  :type 'string)
+(cl-defstruct git-identity-local-location directory level)
 
-(defcustom git-identity-default-username
-  (when (and (stringp user-full-name)
-             (not (string-empty-p user-full-name)))
-    user-full-name)
-  "Default full name of the user set in Git repositories."
-  :group 'git-identity
-  :type 'string)
+(defclass git-identity-target ()
+  ((githost :initarg :githost
+            :type string)
+   (type :initarg :type
+         :type symbol)
+   (login :initarg :login
+          :type string)
+   (local-locations :initarg :local-locations
+                    :type (list git-identity-local-location))))
 
+(defclass git-identity-identity ()
+  ((email :initarg :email
+          :type string)
+   (fullname :initarg :fullname
+             :type string)
+   (targets :initarg :targets
+            :type (list git-identity-target))
+   ;; Deprecated field
+   (hostnames :initarg :hostnames
+              :type (list string))
+   ;; Deprecated field
+   (directories :initarg :directories
+                :type (list string))))
+
+(cl-defun git-identity--make-identity (email &key fullname name targets domains dirs)
+  "Build `git-identity-identity' type from an entry in `git-identity-list'."
+  (cl-check-type email string "e-mail address")
+  (cl-check-type fullname (or string null) "full name")
+  (cl-check-type name (or string null) "full name")
+  (cl-check-type targets (or list null) "list of targets")
+  (cl-check-type domains (or list null) "list of domains")
+  (cl-check-type dirs (or list) "list of directories")
+  (when (and fullname name)
+    (user-error "You cannot specify both fullname and name at the same time"))
+  (make-instance 'git-identity-identity
+                 :email email
+                 :fullname (or fullname name)
+                 :targets targets
+                 :hostnames domains
+                 :directories dirs))
+
+;;;; Widgets for custom variable types
 (define-widget 'git-identity-local-location 'lazy
   "Local repository location."
   :type '(list :tag "Local location"
@@ -97,27 +130,52 @@
                  ((const :tag "Your account name"
                          :login)
                   string)
-                 ((const :tag "Local paths with properties"
-                         :local-paths)
+                 ((const :tag "Local locations"
+                         :local-locations)
                   (repeat git-identity-local-location)))))
+
+;;;; Custom vars
+
+(defcustom git-identity-git-executable "git"
+  "Executable file of Git."
+  :group 'git-identity
+  :type 'string)
+
+(defcustom git-identity-default-username
+  (when (and (stringp user-full-name)
+             (not (string-empty-p user-full-name)))
+    user-full-name)
+  "Default full name of the user set in Git repositories."
+  :group 'git-identity
+  :type 'string)
+
+(defvar git-identity--identities nil
+  "Internal list of `git-identity-identity' instances.")
 
 (defcustom git-identity-list nil
   "List of plists of Git identities."
   :group 'git-identity
   :type '(alist :tag "Identity setting"
                 :key-type (string :tag "E-mail address (user.email)")
-                :value-type (plist :tag "Options"
-                                   :options
-                                   (((const :tag "Full name" :name)
-                                     string)
-                                    ((const :tag "Targets" :targets)
-                                     (repeat git-identity-target))
-                                    ((const :tag "Host names (deprecated)"
-                                            :domains)
-                                     (repeat string))
-                                    ((const :tag "Directories (deprecated)"
-                                            :dirs)
-                                     (repeat directory))))))
+                :value-type
+                (plist :tag "Options"
+                       :options
+                       (((const :tag "Full name" :fullname)
+                         string)
+                        ((const :tag "Targets" :targets)
+                         (repeat git-identity-target))
+                        ((const :tag "Full name (deprecated)" :name)
+                         string)
+                        ((const :tag "Host names (deprecated)"
+                                :domains)
+                         (repeat string))
+                        ((const :tag "Directories (deprecated)"
+                                :dirs)
+                         (repeat directory)))))
+  :set (lambda (sym val)
+         (setq git-identity--identities
+               (mapcar (-partial #'apply #'git-identity--make-identity) val))
+         (set sym val)))
 
 (defcustom git-identity-verify t
   "When non-nil, check if the identity is consistent.
@@ -134,6 +192,15 @@ This ensures that your identity policies defined in
 identity setting."
   :group 'git-identity
   :type 'boolean)
+
+(defcustom git-identity-repository-read-function nil
+  "Function used to read a repository URL in the package.
+
+This should be a function that returns a string.
+
+If this value is nil, the built-in function is used."
+  :group 'git-identity
+  :type '(or function nil))
 
 ;;;; Faces
 (defface git-identity-bold-face
@@ -185,14 +252,33 @@ identity setting."
                (when bufw
                  (quit-window nil bufw))
                (kill-buffer buf))))))))
-(defcustom git-identity-repository-read-function nil
-  "Function used to read a repository URL in the package.
 
-This should be a function that returns a string.
+;;;; Methods
 
-If this value is nil, the built-in function is used."
-  :group 'git-identity
-  :type '(or function nil))
+;;;;; Targets
+
+(cl-defmethod git-identity--target-match-url-p ((target git-identity-target)
+                                    url)
+  "Check if TARGET matches a Git URL."
+  (cl-case (oref target type)
+    ('domain (let ((hostname (git-identity--host-in-git-url url))
+                   (regexp (concat "\.?"
+                                   (regexp-quote (git-identity--target-loc-spec target))
+                                   "$")))
+               (string-match-p regexp hostname)))
+    ('regexp (string-match-p (cdar target) url))))
+
+(cl-defmethod git-identity--target-match-directory-p ((target git-identity-target)
+                                          directory)
+  "Check if TARGET matches a DIRECTORY."
+  (git-identity--inside-dirs-p
+   directory (cons (git-identity--target-primary-dir target)
+                   (git-identity--target-alt-dirs target))))
+
+;;;;; Identities
+
+
+
 
 ;;;; Operations on data types
 ;;;;; Identities
@@ -248,22 +334,6 @@ If this value is nil, the built-in function is used."
   (plist-get (git-identity--target-options target) :alt-paths))
 
 ;;;;;; Predicates
-(defun git-identity--target-match-url-p (target url)
-  "Return non-nil if TARGET matches URL."
-  (cl-case (git-identity--target-type target)
-    ('domain (let ((hostname (git-identity--host-in-git-url url))
-                   (regexp (concat "\.?"
-                                   (regexp-quote (git-identity--target-loc-spec target))
-                                   "$")))
-               (string-match-p regexp hostname)))
-    ('regexp (string-match-p (cdar target) url))))
-
-(defun git-identity--target-match-directory-p (target directory)
-  "Return non-nil if TARGET matches DIRECTORY."
-  (git-identity--inside-dirs-p
-   directory (cons (git-identity--target-primary-dir target)
-                   (git-identity--target-alt-dirs target))))
-
 ;;;; Guessing identity for the current repository
 
 (cl-defun git-identity--guess-identity (&key verbose)
@@ -521,6 +591,17 @@ identity setting."
                                   (propertize "global" 'face 'git-identity-global-identity-face)))
                       "Cannot find the current identity."))
                  "\n")))
+
+;;;; Utility functions
+;;;;; Parsing Git URLs
+
+(defconst git-identity-git-url-regexp
+  (rx "")
+  )
+
+(defun git-identity--split-url (url)
+  
+  )
 
 ;;;; Help configuring identities
 (defun git-identity-add-identity ()
