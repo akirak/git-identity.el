@@ -317,7 +317,7 @@ to this repository? "
 
 (defun git-identity--run-git (&rest args)
   "Run Git with ARGS."
-  (apply #'call-process git-identity-git-executable nil nil nil args))
+  (apply #'process-file git-identity-git-executable nil nil nil args))
 
 (defun git-identity--git-config-get (key &optional scope)
   "Get the value of a Git option.
@@ -326,7 +326,7 @@ KEY is the name of the option, and optional SCOPE is a string passed
 as an argument to Git command to specify the scope, which is either
 \"--global\" or \"--local\"."
   (with-temp-buffer
-    (when (= 0 (apply #'call-process git-identity-git-executable nil t nil
+    (when (= 0 (apply #'process-file git-identity-git-executable nil t nil
                       (delq nil `("config" "--get" ,scope ,key))))
       (string-trim-right (buffer-string)))))
 
