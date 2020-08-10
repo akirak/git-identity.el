@@ -3,9 +3,6 @@
 ;; Copyright (C) 2020 Akira Komamura
 
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
-;; Version: 0.1
-;; Package-Requires: ((emacs "25.1") (magit "2.13"))
-;; Keywords: git vc convenience
 ;; URL: https://github.com/akirak/git-identity.el
 
 ;; This file is not part of GNU Emacs.
@@ -33,7 +30,7 @@
 ;;; Code:
 
 (autoload 'git-identity-ensure "git-identity")
-(declare-function 'magit-commit "ext:magit-commit")
+(declare-function magit-commit "ext:magit-commit")
 
 ;;;###autoload
 (define-minor-mode git-identity-magit-mode
