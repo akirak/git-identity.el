@@ -23,7 +23,7 @@
 ;; GNU General Public License for more details.
 ;;
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -211,7 +211,7 @@ identity setting."
       (error "Failed to match URL: %s" url))))
 
 (defun git-identity--dir-in-git-url (url)
-  "Extract all but last path components of a Git repository."
+  "Extract all but last path components of a Git repository URL."
   (save-match-data
     (if (string-match git-identity--repo-url-pattern url)
         (match-string 3 url)
@@ -308,7 +308,7 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
    "Configure your identities"))
 
 ;;;###autoload (autoload 'git-identity-info "git-identity")
-(defalias 'git-identity-info 'git-identity-hydra/body
+(defalias 'git-identity-info #'git-identity-hydra/body
   "Display the identity information of the current repository.")
 
 (defun git-identity--block-if-not-in-repo (orig &rest args)
@@ -320,6 +320,7 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
 (advice-add #'git-identity-info :around #'git-identity--block-if-not-in-repo)
 
 ;;;; Mode definition
+;;;###autoload
 (defun git-identity-ensure ()
   "Ensure that the current repository has an identity."
   (let ((local-email (git-identity--git-config-get "user.email" "--local"))
