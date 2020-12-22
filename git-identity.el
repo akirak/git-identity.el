@@ -143,15 +143,64 @@ identity setting."
                        t)))))
            git-identity-list)))
 
+(eval-and-compile
+  (defconst git-identity--xalpha
+    ;; TODO: Add thorough tests and fix this pattern
+    (let* ((safe "-$=_@.&+")
+           (extra "!*(),~")
+           ;; I don't think people would want URLs containing
+           ;; double/single quotes, but the spec contains them.
+           ;;
+           ;; (extra "!*\"'(),")
+           (escape '(and "%" (char hex) (char hex))))
+      `(or ,escape (char alpha digit ,safe ,extra))))
+
+  (defconst git-identity--scp-user-pattern
+    '(+ (any "-_." alnum)))
+
+  (defconst git-identity--host-pattern
+    (let* ((xalpha git-identity--xalpha)
+           (ialpha `(and (char alpha) (* ,xalpha)))
+           (hostname `(and ,ialpha (* (and "." ,ialpha))))
+           (hostnumber '(and (+ (char digit))
+                             (repeat 3 (and "." (+ (char digit)))))))
+      `(or ,hostname ,hostnumber)))
+
+  (defconst git-identity--repo-url-pattern
+    (rx bol
+        (or (and (?  (eval git-identity--scp-user-pattern) "@")
+                 (group (eval git-identity--host-pattern))
+                 ":")
+            (and (or (and (or "http" "ftp") (?  "s"))
+                     "ssh"
+                     "git")
+                 "://"
+                 (?  (eval git-identity--scp-user-pattern) "@")
+                 (group (eval git-identity--host-pattern))
+                 (?  ":" (+ (char digit)))
+                 "/"))
+        (group (* (and (+ (eval git-identity--xalpha)) "/"))
+               (+ (eval git-identity--xalpha)))
+        "/"
+        (group (+ (eval git-identity--xalpha)))
+        (?  ".git")
+        (?  "/")
+        eol)))
+
 (defun git-identity--host-in-git-url (url)
   "Extract the host from URL of a Git repository."
-  (cond
-   ((string-match (rx bol "https://" (group (+ (not (any "/:"))))) url)
+  (save-match-data
+    (if (string-match git-identity--repo-url-pattern url)
+        (or (match-string 1 url)
+            (match-string 2 url))
+      (error "Failed to match URL: %s" url))))
 
-    (match-string 1 url))
-   ((string-match (rx bol (?  (+ (not (any "@:"))) "@")
-                      (group (+ (not (any ":"))))) url)
-    (match-string 1 url))))
+(defun git-identity--dir-in-git-url (url)
+  "Extract all but last path components of a Git repository."
+  (save-match-data
+    (if (string-match git-identity--repo-url-pattern url)
+        (match-string 3 url)
+      (error "Failed to match URL: %s" url))))
 
 (defun git-identity--inside-dirs-p (target maybe-ancestors)
   "Return non-nil if TARGET is a descendant of any of MAYBE-ANCESTORS."
