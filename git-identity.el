@@ -47,6 +47,8 @@
 (require 'dash)
 (require 'hydra)
 
+(declare-function magit-commit "ext:magit-commit")
+
 (defgroup git-identity nil
   "Identity management for Git."
   :group 'vc)
@@ -362,6 +364,25 @@ to this repository? "
                     (git-identity--username expected-identity)
                     (git-identity--email expected-identity))))
       (git-identity--set-identity expected-identity 'noconfirm)))))
+
+
+;;;###autoload
+(define-minor-mode git-identity-magit-mode
+  "Global minor mode for running Git identity checks in Magit.
+
+This mode enables the following features:
+
+- Add a hook to `magit-commit' to ensure that you have a
+  global/local identity configured in the repository.
+"
+  :global t
+  (cond
+   ;; Activate the mode
+   (git-identity-magit-mode
+    (advice-add #'magit-commit :before #'git-identity-ensure))
+   ;; Deactivate the mode
+   (t
+    (advice-remove #'magit-commit #'git-identity-ensure))))
 
 ;;;; Git utilities
 (defun git-identity--git-config-set (&rest pairs)
