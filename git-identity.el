@@ -80,6 +80,10 @@
                                      string)
                                     ((const :tag "Host names" :domains)
                                      (repeat string))
+                                    ((const :tag "Organizations" :organizations)
+                                     (repeat string))
+                                    ((const :tag "Excluded organizations" :exclude-organizations)
+                                     (repeat string))
                                     ((const :tag "Directories" :dirs)
                                      (repeat string))))))
 
@@ -129,19 +133,30 @@ identity setting."
     (-find (lambda (ent)
              ;; Which should take precedence? Domain or directory?
              (let ((plist (cdr ent)))
-               (or (when url
-                     (let ((domain (git-identity--host-in-git-url url)))
-                       (when (-contains? (plist-get plist :domains) domain)
-                         (message "Chosen an identity based on domain %s in url \"%s\""
-                                  domain url)
-                         t)))
-                   (let ((ancestor (git-identity--inside-dirs-p default-directory
-                                                                (plist-get plist :dirs))))
-                     (when ancestor
-                       (message "Chosen an identity based on an ancestor directory %s"
-                                ancestor)
-                       t)))))
+               (or (when-let (domain (and url (git-identity--match-url url plist)))
+                     (message "Chosen an identity based on domain %s in url \"%s\""
+                              domain url)
+                     t)
+                   (when-let (ancestor (git-identity--inside-dirs-p default-directory
+                                                                    (plist-get plist :dirs)))
+                     (message "Chosen an identity based on an ancestor directory %s"
+                              ancestor)
+                     t))))
            git-identity-list)))
+
+(defun git-identity--match-url (url plist)
+  "Return non-nil if URL matches condition in PLIST."
+  (let ((domain (git-identity--host-in-git-url url))
+        (dirs (-map #'downcase (split-string (git-identity--dir-in-git-url url) "/"))))
+    (when (and (-contains? (plist-get plist :domains)
+                           domain)
+               (or (cl-intersection dirs
+                                    (-map #'downcase (plist-get plist :organizations))
+                                    :test #'string-equal)
+                   (not (cl-intersection dirs
+                                         (-map #'downcase (plist-get plist :exclude-organizations))
+                                         :test #'string-equal))))
+      domain)))
 
 (eval-and-compile
   (defconst git-identity--xalpha
