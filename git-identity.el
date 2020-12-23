@@ -130,35 +130,54 @@ identity setting."
 
 (defun git-identity--guess-identity ()
   "Pick an identity which seems suitable for the current repo."
-  (let ((url (or (git-identity--git-config-get "remote.origin.pushurl")
-                 (git-identity--git-config-get "remote.origin.url"))))
-    (-find (lambda (ent)
-             ;; Which should take precedence? Domain or directory?
-             (let ((plist (cdr ent)))
-               (or (when-let (domain (and url (git-identity--match-url url plist)))
-                     (message "Chosen an identity based on domain %s in url \"%s\""
-                              domain url)
-                     t)
-                   (when-let (ancestor (git-identity--inside-dirs-p default-directory
-                                                                    (plist-get plist :dirs)))
-                     (message "Chosen an identity based on an ancestor directory %s"
-                              ancestor)
-                     t))))
-           git-identity-list)))
+  (-some--> (if-let (url (or (git-identity--git-config-get "remote.origin.pushurl")
+                             (git-identity--git-config-get "remote.origin.url")))
+                (or (git-identity--guess-identity-by-url url)
+                    (git-identity--guess-identity-by-dir default-directory))
+              (git-identity--guess-identity-by-dir default-directory))
+    (pcase it
+      (`(domain ,domain ,ent)
+       (message "Chosen an identity based on domain %s" domain)
+       ent)
+      (`(ancestor ,ancestor ,ent)
+       (message "Chosen an identity based on an ancestor directory %s" ancestor)
+       ent))))
 
-(defun git-identity--match-url (url plist)
-  "Return non-nil if URL matches condition in PLIST."
+(defun git-identity--guess-identity-by-url (url)
+  "Pick an identity from `git-identity-list' based on URL."
   (let ((domain (git-identity--host-in-git-url url))
-        (dirs (-map #'downcase (split-string (git-identity--dir-in-git-url url) "/"))))
-    (when (and (-contains? (plist-get plist :domains)
-                           domain)
-               (or (cl-intersection dirs
-                                    (-map #'downcase (plist-get plist :organizations))
-                                    :test #'string-equal)
-                   (not (cl-intersection dirs
-                                         (-map #'downcase (plist-get plist :exclude-organizations))
-                                         :test #'string-equal))))
-      domain)))
+        (remote-dirs (->> (split-string (git-identity--dir-in-git-url url) "/")
+                          (-map #'downcase))))
+    (cl-labels
+        ((match-domain (domains)
+                       (-contains? domains domain))
+         (match-org (organizations)
+                    (cl-intersection remote-dirs (-map #'downcase organizations)
+                                     :test #'string-equal)))
+      (-some--> (pcase (-filter (pcase-lambda (`(_ . ,plist))
+                                  (and (match-domain (plist-get plist :domains))
+                                       (not (match-org (plist-get plist :exclude-organizations)))))
+                                git-identity-list)
+                  ('() nil)
+                  (`(,identity)
+                   identity)
+                  (matches
+                   (if-let (identity (-find (pcase-lambda (`(_ . ,plist))
+                                              (match-org (plist-get plist :organizations)))
+                                            matches))
+                       identity
+                     (message "There are multiple matches matching the domain %s" domain)
+                     nil)))
+        (list 'domain domain it)))))
+
+(defun git-identity--guess-identity-by-dir (dir)
+  "Pick an identity from `git-identity-list' based on DIR."
+  (cl-some (lambda (ent)
+             (when-let (ancestor (git-identity--inside-dirs-p
+                                  dir
+                                  (plist-get (cdr ent) :dirs)))
+               (list 'ancestor ancestor ent)))
+           git-identity-list))
 
 (eval-and-compile
   (defconst git-identity--xalpha
