@@ -71,6 +71,8 @@ You can also set the identity manually through =git-identity-set-identity= comma
 
 To check what name and e-mail address are set on the repository, use =git-identity-info= command.
 ** Changelog
+*** 0.1.2 [2020-12-23 Wed]
+- Add support for organizations and multiple identities on the same hosts
 *** 0.1.1 [2020-01-25 Sat]
 - Fix the bug of duplicate confirmation in setting an expected identity.
 - Fix the bug of trying to set an identity when the global identity is the same as an expected identity.
