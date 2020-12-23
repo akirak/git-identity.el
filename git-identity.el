@@ -23,7 +23,7 @@
 ;; GNU General Public License for more details.
 ;;
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -46,6 +46,8 @@
 (require 'f)
 (require 'dash)
 (require 'hydra)
+
+(declare-function magit-commit "ext:magit-commit")
 
 (defgroup git-identity nil
   "Identity management for Git."
@@ -79,6 +81,10 @@
                                    (((const :tag "Full name" :name)
                                      string)
                                     ((const :tag "Host names" :domains)
+                                     (repeat string))
+                                    ((const :tag "Organizations" :organizations)
+                                     (repeat string))
+                                    ((const :tag "Excluded organizations" :exclude-organizations)
                                      (repeat string))
                                     ((const :tag "Directories" :dirs)
                                      (repeat string))))))
@@ -124,34 +130,113 @@ identity setting."
 
 (defun git-identity--guess-identity ()
   "Pick an identity which seems suitable for the current repo."
-  (let ((url (or (git-identity--git-config-get "remote.origin.pushurl")
-                 (git-identity--git-config-get "remote.origin.url"))))
-    (-find (lambda (ent)
-             ;; Which should take precedence? Domain or directory?
-             (let ((plist (cdr ent)))
-               (or (when url
-                     (let ((domain (git-identity--host-in-git-url url)))
-                       (when (-contains? (plist-get plist :domains) domain)
-                         (message "Chosen an identity based on domain %s in url \"%s\""
-                                  domain url)
-                         t)))
-                   (let ((ancestor (git-identity--inside-dirs-p default-directory
-                                                                (plist-get plist :dirs))))
-                     (when ancestor
-                       (message "Chosen an identity based on an ancestor directory %s"
-                                ancestor)
-                       t)))))
-           git-identity-list)))
+  (-some--> (if-let (url (or (git-identity--git-config-get "remote.origin.pushurl")
+                             (git-identity--git-config-get "remote.origin.url")))
+                (or (git-identity--guess-identity-by-url url)
+                    (git-identity--guess-identity-by-dir default-directory))
+              (git-identity--guess-identity-by-dir default-directory))
+    (pcase it
+      (`(domain ,domain ,ent)
+       (message "Chosen an identity based on domain %s" domain)
+       ent)
+      (`(ancestor ,ancestor ,ent)
+       (message "Chosen an identity based on an ancestor directory %s" ancestor)
+       ent))))
+
+(defun git-identity--guess-identity-by-url (url)
+  "Pick an identity from `git-identity-list' based on URL."
+  (let ((domain (git-identity--host-in-git-url url))
+        (remote-dirs (->> (split-string (git-identity--dir-in-git-url url) "/")
+                          (-map #'downcase))))
+    (cl-labels
+        ((match-domain (domains)
+                       (-contains? domains domain))
+         (match-org (organizations)
+                    (cl-intersection remote-dirs (-map #'downcase organizations)
+                                     :test #'string-equal)))
+      (-some--> (pcase (-filter (pcase-lambda (`(_ . ,plist))
+                                  (and (match-domain (plist-get plist :domains))
+                                       (not (match-org (plist-get plist :exclude-organizations)))))
+                                git-identity-list)
+                  ('() nil)
+                  (`(,identity)
+                   identity)
+                  (matches
+                   (if-let (identity (-find (pcase-lambda (`(_ . ,plist))
+                                              (match-org (plist-get plist :organizations)))
+                                            matches))
+                       identity
+                     (message "There are multiple matches matching the domain %s" domain)
+                     nil)))
+        (list 'domain domain it)))))
+
+(defun git-identity--guess-identity-by-dir (dir)
+  "Pick an identity from `git-identity-list' based on DIR."
+  (cl-some (lambda (ent)
+             (when-let (ancestor (git-identity--inside-dirs-p
+                                  dir
+                                  (plist-get (cdr ent) :dirs)))
+               (list 'ancestor ancestor ent)))
+           git-identity-list))
+
+(eval-and-compile
+  (defconst git-identity--xalpha
+    ;; TODO: Add thorough tests and fix this pattern
+    (let* ((safe "-$=_@.&+")
+           (extra "!*(),~")
+           ;; I don't think people would want URLs containing
+           ;; double/single quotes, but the spec contains them.
+           ;;
+           ;; (extra "!*\"'(),")
+           (escape '(and "%" (char hex) (char hex))))
+      `(or ,escape (char alpha digit ,safe ,extra))))
+
+  (defconst git-identity--scp-user-pattern
+    '(+ (any "-_." alnum)))
+
+  (defconst git-identity--host-pattern
+    (let* ((xalpha git-identity--xalpha)
+           (ialpha `(and (char alpha) (* ,xalpha)))
+           (hostname `(and ,ialpha (* (and "." ,ialpha))))
+           (hostnumber '(and (+ (char digit))
+                             (repeat 3 (and "." (+ (char digit)))))))
+      `(or ,hostname ,hostnumber)))
+
+  (defconst git-identity--repo-url-pattern
+    (rx bol
+        (or (and (?  (eval git-identity--scp-user-pattern) "@")
+                 (group (eval git-identity--host-pattern))
+                 ":")
+            (and (or (and (or "http" "ftp") (?  "s"))
+                     "ssh"
+                     "git")
+                 "://"
+                 (?  (eval git-identity--scp-user-pattern) "@")
+                 (group (eval git-identity--host-pattern))
+                 (?  ":" (+ (char digit)))
+                 "/"))
+        (group (* (and (+ (eval git-identity--xalpha)) "/"))
+               (+ (eval git-identity--xalpha)))
+        "/"
+        (group (+ (eval git-identity--xalpha)))
+        (?  ".git")
+        (?  "/")
+        eol)))
 
 (defun git-identity--host-in-git-url (url)
   "Extract the host from URL of a Git repository."
-  (cond
-   ((string-match (rx bol "https://" (group (+ (not (any "/:"))))) url)
+  (save-match-data
+    (if (string-match git-identity--repo-url-pattern url)
+        (or (match-string 1 url)
+            (match-string 2 url))
+      (error "Failed to match URL: %s" url))))
 
-    (match-string 1 url))
-   ((string-match (rx bol (?  (+ (not (any "@:"))) "@")
-                      (group (+ (not (any ":"))))) url)
-    (match-string 1 url))))
+(defun git-identity--dir-in-git-url (url)
+  "Extract all but last path components of a Git repository URL."
+  (save-match-data
+    (if (string-match git-identity--repo-url-pattern url)
+        (match-string 3 url)
+      (error "Failed to match URL: %s" url))))
 
 (defun git-identity--inside-dirs-p (target maybe-ancestors)
   "Return non-nil if TARGET is a descendant of any of MAYBE-ANCESTORS."
@@ -244,7 +329,7 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
    "Configure your identities"))
 
 ;;;###autoload (autoload 'git-identity-info "git-identity")
-(defalias 'git-identity-info 'git-identity-hydra/body
+(defalias 'git-identity-info #'git-identity-hydra/body
   "Display the identity information of the current repository.")
 
 (defun git-identity--block-if-not-in-repo (orig &rest args)
@@ -256,6 +341,7 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
 (advice-add #'git-identity-info :around #'git-identity--block-if-not-in-repo)
 
 ;;;; Mode definition
+;;;###autoload
 (defun git-identity-ensure ()
   "Ensure that the current repository has an identity."
   (let ((local-email (git-identity--git-config-get "user.email" "--local"))
@@ -297,6 +383,25 @@ to this repository? "
                     (git-identity--username expected-identity)
                     (git-identity--email expected-identity))))
       (git-identity--set-identity expected-identity 'noconfirm)))))
+
+
+;;;###autoload
+(define-minor-mode git-identity-magit-mode
+  "Global minor mode for running Git identity checks in Magit.
+
+This mode enables the following features:
+
+- Add a hook to `magit-commit' to ensure that you have a
+  global/local identity configured in the repository.
+"
+  :global t
+  (cond
+   ;; Activate the mode
+   (git-identity-magit-mode
+    (advice-add #'magit-commit :before #'git-identity-ensure))
+   ;; Deactivate the mode
+   (t
+    (advice-remove #'magit-commit #'git-identity-ensure))))
 
 ;;;; Git utilities
 (defun git-identity--git-config-set (&rest pairs)

@@ -45,7 +45,13 @@ Below is an example configuration using =use-package=:
   (setq git-identity-list
         '(("my.personal.address@gmail.com"
            :domains ("github.com")
+           ;; The identity is applied if the remote URL contains this organization as directory
+           :exclude-organizations ("my-company-org")
            :dirs ("~/.emacs.d" "~/personal"))
+          ("my.personal.address@mycompanyorg.com"
+           :domains ("github.com")
+           ;; The identity is applied if the remote URL contains this organization as directory
+           :organizations ("my-company-org"))
           ("my.name@mycompany.com"
            :domains ("mycompany.com")
            :dirs ("~/work"))
@@ -55,6 +61,8 @@ Below is an example configuration using =use-package=:
 #+end_src
 
 Note: The format of =git-identity-list= is going to be changed in an upcoming version. See [[https://github.com/akirak/git-identity.el/issues/2][#2]] for details.
+
+You can restrict an identity to a certain organization (by setting =:organizations=) and prevent it from setting in an organization (by setting =:exclude-organizations=), but those options are effective if and only if you set correct =:domains=. For example, you can have separate identities on GitHub both for personal and for your company, but you have to include =github.com= in =:domains= of both identities. Note: Organization names are case-insensitive.
 ** Usage
 If you turn on =git-identity-magit-mode=, git-identity checks for an identity every time =magit-commit= is invoked.
 If there is no local identity setting but a global one, the latter is used, so it won't prompt for an identity.
