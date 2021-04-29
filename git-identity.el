@@ -146,11 +146,18 @@ identity setting."
 (defun git-identity--guess-identity-by-url (url)
   "Pick an identity from `git-identity-list' based on URL."
   (let ((domain (git-identity--host-in-git-url url))
-        (remote-dirs (->> (split-string (git-identity--dir-in-git-url url) "/")
-                          (-map #'downcase))))
+        (remote-dirs (-some--> (git-identity--dir-in-git-url url)
+                       (split-string it "/")
+                       (-map #'downcase it))))
     (cl-labels
         ((match-domain (domains)
-                       (-contains? domains domain))
+                       (-any-p (lambda (domain-pattern)
+                                 (when (stringp domain-pattern)
+                                   (string-match-p (rx-to-string `(and (or bos ".")
+                                                                       ,domain-pattern
+                                                                       eos))
+                                                   domain)))
+                               domains))
          (match-org (organizations)
                     (cl-intersection remote-dirs (-map #'downcase organizations)
                                      :test #'string-equal)))
@@ -215,9 +222,9 @@ identity setting."
                  (group (eval git-identity--host-pattern))
                  (?  ":" (+ (char digit)))
                  "/"))
-        (group (* (and (+ (eval git-identity--xalpha)) "/"))
-               (+ (eval git-identity--xalpha)))
-        "/"
+        (? (group (* (and (+ (eval git-identity--xalpha)) "/"))
+                  (+ (eval git-identity--xalpha)))
+           "/")
         (group (+ (eval git-identity--xalpha)))
         (?  ".git")
         (?  "/")
@@ -329,16 +336,16 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
    "Configure your identities"))
 
 ;;;###autoload (autoload 'git-identity-info "git-identity")
-(defalias 'git-identity-info #'git-identity-hydra/body
-  "Display the identity information of the current repository.")
+(defun git-identity-info ()
+  "Display the identity information of the current repository."
+  (interactive)
+  (git-identity--block-if-not-in-repo #'git-identity-hydra/body))
 
 (defun git-identity--block-if-not-in-repo (orig &rest args)
   "Prevent running ORIG function with ARGS if not in a Git repo."
   (if (git-identity--find-repo)
       (apply orig args)
     (user-error "Not inside a Git repo")))
-
-(advice-add #'git-identity-info :around #'git-identity--block-if-not-in-repo)
 
 ;;;; Mode definition
 ;;;###autoload
@@ -392,8 +399,7 @@ to this repository? "
 This mode enables the following features:
 
 - Add a hook to `magit-commit' to ensure that you have a
-  global/local identity configured in the repository.
-"
+  global/local identity configured in the repository."
   :global t
   (cond
    ;; Activate the mode

@@ -47,7 +47,9 @@
     (expect (git-identity--host-in-git-url "git@github.com:owner/repo.git")
             :to-equal "github.com")
     (expect (git-identity--host-in-git-url "github.com:owner/repo.git")
-            :to-equal "github.com")))
+            :to-equal "github.com")
+    (expect (git-identity--host-in-git-url "git@gist.github.com:1234123412341234.git")
+            :to-equal "gist.github.com")))
 
 (describe "git-identity--dir-in-git-url"
 
