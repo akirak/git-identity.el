@@ -336,16 +336,16 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
    "Configure your identities"))
 
 ;;;###autoload (autoload 'git-identity-info "git-identity")
-(defalias 'git-identity-info #'git-identity-hydra/body
-  "Display the identity information of the current repository.")
+(defun git-identity-info ()
+  "Display the identity information of the current repository."
+  (interactive)
+  (git-identity--block-if-not-in-repo #'git-identity-hydra/body))
 
 (defun git-identity--block-if-not-in-repo (orig &rest args)
   "Prevent running ORIG function with ARGS if not in a Git repo."
   (if (git-identity--find-repo)
       (apply orig args)
     (user-error "Not inside a Git repo")))
-
-(advice-add #'git-identity-info :around #'git-identity--block-if-not-in-repo)
 
 ;;;; Mode definition
 ;;;###autoload
