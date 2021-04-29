@@ -146,8 +146,9 @@ identity setting."
 (defun git-identity--guess-identity-by-url (url)
   "Pick an identity from `git-identity-list' based on URL."
   (let ((domain (git-identity--host-in-git-url url))
-        (remote-dirs (->> (split-string (git-identity--dir-in-git-url url) "/")
-                          (-map #'downcase))))
+        (remote-dirs (-some--> (git-identity--dir-in-git-url url)
+                       (split-string it "/")
+                       (-map #'downcase it))))
     (cl-labels
         ((match-domain (domains)
                        (-contains? domains domain))
