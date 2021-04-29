@@ -399,8 +399,7 @@ to this repository? "
 This mode enables the following features:
 
 - Add a hook to `magit-commit' to ensure that you have a
-  global/local identity configured in the repository.
-"
+  global/local identity configured in the repository."
   :global t
   (cond
    ;; Activate the mode
