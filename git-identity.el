@@ -215,9 +215,9 @@ identity setting."
                  (group (eval git-identity--host-pattern))
                  (?  ":" (+ (char digit)))
                  "/"))
-        (group (* (and (+ (eval git-identity--xalpha)) "/"))
-               (+ (eval git-identity--xalpha)))
-        "/"
+        (? (group (* (and (+ (eval git-identity--xalpha)) "/"))
+                  (+ (eval git-identity--xalpha)))
+           "/")
         (group (+ (eval git-identity--xalpha)))
         (?  ".git")
         (?  "/")
