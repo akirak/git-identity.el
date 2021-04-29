@@ -151,7 +151,13 @@ identity setting."
                        (-map #'downcase it))))
     (cl-labels
         ((match-domain (domains)
-                       (-contains? domains domain))
+                       (-any-p (lambda (domain-pattern)
+                                 (when (stringp domain-pattern)
+                                   (string-match-p (rx-to-string `(and (or bos ".")
+                                                                       ,domain-pattern
+                                                                       eos))
+                                                   domain)))
+                               domains))
          (match-org (organizations)
                     (cl-intersection remote-dirs (-map #'downcase organizations)
                                      :test #'string-equal)))
