@@ -211,6 +211,8 @@ identity setting."
 
   (defconst git-identity--repo-url-pattern
     (rx bol
+        ;; Allow URLs of git-remote-hg: https://github.com/felipec/git-remote-hg
+        (? "hg::")
         (or (and (?  (eval git-identity--scp-user-pattern) "@")
                  (group (eval git-identity--host-pattern))
                  ":")
