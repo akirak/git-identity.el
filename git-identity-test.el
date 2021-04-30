@@ -31,7 +31,13 @@
     (expect (git-identity--host-in-git-url "https://github.com:22/owner/repo.git")
             :to-equal "github.com")
     (expect (git-identity--host-in-git-url "https://github.com:22/owner/repo.git/")
-            :to-equal "github.com"))
+            :to-equal "github.com")
+    (expect (git-identity--host-in-git-url "https://hg.sr.ht/~geyaeb/haskell-pdftotext")
+            :to-equal "hg.sr.ht"))
+
+  (it "matches URLs of git-remote-hg"
+    (expect (git-identity--host-in-git-url "hg::https://hg.sr.ht/~geyaeb/haskell-pdftotext")
+            :to-equal "hg.sr.ht"))
 
   (it "matches an FTP URL"
     (expect (git-identity--host-in-git-url "ftp://github.com/owner/repo.git")
@@ -77,7 +83,13 @@
     (expect (git-identity--dir-in-git-url "https://github.com:22/owner/repo.git")
             :to-equal "owner")
     (expect (git-identity--dir-in-git-url "https://github.com:22/owner/repo.git/")
-            :to-equal "owner"))
+            :to-equal "owner")
+    (expect (git-identity--dir-in-git-url "https://hg.sr.ht/~geyaeb/haskell-pdftotext")
+            :to-equal "~geyaeb"))
+
+  (it "matches URLs of git-remote-hg"
+    (expect (git-identity--dir-in-git-url "hg::https://hg.sr.ht/~geyaeb/haskell-pdftotext")
+            :to-equal "~geyaeb"))
 
   (it "matches an FTP URL"
     (expect (git-identity--dir-in-git-url "ftp://github.com/owner/repo.git")
