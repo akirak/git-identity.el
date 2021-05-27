@@ -63,6 +63,13 @@ Below is an example configuration using =use-package=:
 Note: The format of =git-identity-list= is going to be changed in an upcoming version. See [[https://github.com/akirak/git-identity.el/issues/2][#2]] for details.
 
 You can restrict an identity to a certain organization (by setting =:organizations=) and prevent it from setting in an organization (by setting =:exclude-organizations=), but those options are effective if and only if you set correct =:domains=. For example, you can have separate identities on GitHub both for personal and for your company, but you have to include =github.com= in =:domains= of both identities. Note: Organization names are case-insensitive.
+
+*Caveat: These settings are only effective in your local repositories.*
+Let's assume you join a GitHub organization with your personal account
+and make commits for the organization locally using an alternative e-mail address.
+If you approve and merge PRs on the web application,
+GitHub will make merge commits on behalf of your personal account with your primary e-mail address.
+If you really want to use separate identities on the same service, you will need mutliple accounts.
 ** Usage
 If you turn on =git-identity-magit-mode=, git-identity checks for an identity every time =magit-commit= is invoked.
 If there is no local identity setting but a global one, the latter is used, so it won't prompt for an identity.
