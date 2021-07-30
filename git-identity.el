@@ -215,7 +215,7 @@ identity setting."
         (? "hg::")
         (or (and (?  (eval git-identity--scp-user-pattern) "@")
                  (group (eval git-identity--host-pattern))
-                 ":")
+                 ":" (? "~") (? "/"))
             (and (or (and (or "http" "ftp") (?  "s"))
                      "ssh"
                      "git")
