@@ -71,13 +71,61 @@ If you approve and merge PRs on the web application,
 GitHub will make merge commits on behalf of your personal account with your primary e-mail address.
 If you really want to use separate identities on the same service, you will need mutliple accounts.
 ** Usage
+*** Interactive use
 If you turn on =git-identity-magit-mode=, git-identity checks for an identity every time =magit-commit= is invoked.
 If there is no local identity setting but a global one, the latter is used, so it won't prompt for an identity.
 
 You can also set the identity manually through =git-identity-set-identity= command.
 
 To check what name and e-mail address are set on the repository, use =git-identity-info= command.
+*** As a library
+This package also exposes functions, which you can use as a library for writing your functions.
+**** Parsing URLs
+You can use the following functions from the package to extract a components from a Git URL:
+
+- =git-identity-git-url-host= returns the host name of a URL.
+- =git-identity-git-url-directory= returns the path, excluding the name.
+
+See below for examples:
+
+#+begin_example
+(git-identity-git-url-host "git@github.com:owner/repo.git") => "github.com"
+(git-identity-git-url-host "git@gist.github.com:1234123412341234.git") => "gist.github.com"
+(git-identity-git-url-directory "git@github.com:owner/repo.git") => "owner"
+(git-identity-git-url-directory "https://github.com:22/owner/repo.git/") => "owner"
+(git-identity-git-url-directory "ssh://user-13@github.com:22/path/to/repo.git/") => "path/to"
+#+end_example
+
+The functions support most of the Git URLs defined in the man page of =git-push (1)=.
+Below are examples:
+
+#+begin_example
+ssh://github.com/path/to/repo.git
+git://github.com/owner/repo.git
+ftps://github.com:22/owner/repo.git/
+git@github.com:owner/repo.git
+github.com:owner/repo.git
+git@gist.github.com:1234123412341234.git
+xxx@yyy.host.com:/owner/repo.git
+hg::https://hg.sr.ht/~geyaeb/haskell-pdftotext
+#+end_example
+
+It also supports URLs of Git repositories created using [[https://github.com/felipec/git-remote-hg][git-remote-hg]],
+which means you can use the package on Mercurial repositories.
+**** Detecting an identity
+You can use =git-identity-guess-identity= function to detect an identity of the repository.
+When it is run without arguments, it returns an identity of the current repository.
+
+Furthermore, there is =git-identity-ancestor-directories-from-url= function,
+which returns a list of ancestor directories of an identity in your configuration
+matching a Git URL.
+This can be used to determine the clone destination of a repository
+respecting your configuration.
 ** Changelog
+*** 0.2.0 [2021-09-05 Sun]
+- Add: Make several functions public by renaming. =git-identity-username=, =git-identity-email=, =git-identity-guess-identity=, =git-identity-git-url-host=, and =git-identity-git-url-directory=.
+- Add =git-identity-ancestor-directories-from-url= function.
+- Change: If there are multiple identities matching the same domain of a URL, pick one without organizations.
 *** 0.1.2 [2020-12-23 Wed]
 - Add support for organizations and multiple identities on the same hosts
 *** 0.1.1 [2020-01-25 Sat]
