@@ -128,26 +128,44 @@ identity setting."
 
 ;;;; Guessing identity for the current repository
 
-(defun git-identity-guess-identity ()
+(cl-defun git-identity-guess-identity (&key (url (git-identity--some-origin-url))
+                                            (directory default-directory)
+                                            (verbose t))
   "Pick an identity which seems suitable for the current repo.
 
 It returns an item of `git-identity-list' if there is a matching
-entity, or nil."
-  (-some--> (if-let (url (or (git-identity--git-config-get "remote.origin.pushurl")
-                             (git-identity--git-config-get "remote.origin.url")))
-                (or (git-identity-guess-identity-by-url url)
-                    (git-identity-guess-identity-by-dir default-directory))
-              (git-identity-guess-identity-by-dir default-directory))
-    (pcase it
-      (`(domain ,domain ,ent)
-       (message "Chosen an identity based on domain %s" domain)
-       ent)
-      (`(ancestor ,ancestor ,ent)
-       (message "Chosen an identity based on an ancestor directory %s" ancestor)
-       ent))))
+entity, or nil.
 
-(defun git-identity-guess-identity-by-url (url)
-  "Pick an identity from `git-identity-list' based on URL.
+You can specify URL and DIRECTORY explicitly. This is intended
+for testing.
+
+If VERBOSE is non-nil, log the reason for picking an identity to
+Messages buffer."
+  (pcase (or (when url
+               (git-identity--match-identity-on-url url))
+             (when directory
+               (git-identity--match-identity-on-directory directory)))
+    (`(domain ,domain ,ent)
+     (when verbose
+       (message "Chosen an identity based on domain %s" domain))
+     ent)
+    (`(ancestor ,ancestor ,ent)
+     (when verbose
+       (message "Chosen an identity based on an ancestor directory %s" ancestor))
+     ent)))
+
+(defun git-identity--some-origin-url ()
+  "Return a URL of origin, if any.
+
+This function returns a URL configured as origin.
+
+If there is \"pushurl\" of the remote, it takes precedence,
+because it IS the URL the user uses to push his/her changes."
+  (or (git-identity--git-config-get "remote.origin.pushurl")
+      (git-identity--git-config-get "remote.origin.url")))
+
+(defun git-identity--match-identity-on-url (url)
+  "Return the matching information of an IDENTITY against URL.
 
 This function returns '(domain DOMAIN IDENTITY) where DOMAIN is a
 string and IDENTITY is an item of `git-identity-list'."
@@ -183,15 +201,15 @@ string and IDENTITY is an item of `git-identity-list'."
                      nil)))
         (list 'domain domain it)))))
 
-(defun git-identity-guess-identity-by-dir (dir)
-  "Pick an identity from `git-identity-list' based on DIR.
+(defun git-identity--match-identity-on-directory (directory)
+  "Return the matching information of an IDENTITY against DIRECTORY.
 
 This function returns '(domain ANCESTOR IDENTITY) where ANCESTOR
 is the matching ancestor directory and IDENTITY is an item of
 `git-identity-list'."
   (cl-some (lambda (ent)
              (when-let (ancestor (git-identity--inside-dirs-p
-                                  dir
+                                  directory
                                   (plist-get (cdr ent) :dirs)))
                (list 'ancestor ancestor ent)))
            git-identity-list))
