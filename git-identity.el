@@ -149,10 +149,8 @@ entity, or nil."
 (defun git-identity-guess-identity-by-url (url)
   "Pick an identity from `git-identity-list' based on URL.
 
-This is a subcase of `git-identity-guess-identity'.
-
-It returns an item of `git-identity-list' if there is a matching
-entity, or nil."
+This function returns '(domain DOMAIN IDENTITY) where DOMAIN is a
+string and IDENTITY is an item of `git-identity-list'."
   (let ((domain (git-identity-git-url-host url))
         (remote-dirs (-some--> (git-identity-git-url-directory url)
                        (split-string it "/")
@@ -188,10 +186,9 @@ entity, or nil."
 (defun git-identity-guess-identity-by-dir (dir)
   "Pick an identity from `git-identity-list' based on DIR.
 
-This is a subcase of `git-identity-guess-identity'.
-
-It returns an item of `git-identity-list' if there is a matching
-entity, or nil."
+This function returns '(domain ANCESTOR IDENTITY) where ANCESTOR
+is the matching ancestor directory and IDENTITY is an item of
+`git-identity-list'."
   (cl-some (lambda (ent)
              (when-let (ancestor (git-identity--inside-dirs-p
                                   dir
@@ -203,8 +200,10 @@ entity, or nil."
   (defconst git-identity--xalpha
     (let* ((safe "-$=_@.&+")
            (extra "!*(),~")
-           ;; I don't think people would want URLs containing
-           ;; double/single quotes, but the spec contains them.
+           ;; According to the specification of URIs, there can be URLS that
+           ;; contain double/single quotes.
+           ;; 
+           ;; I think it is rare in Git URLs, so I won't support such patterns.
            ;;
            ;; (extra "!*\"'(),")
            (escape '(and "%" (char hex) (char hex))))
@@ -223,7 +222,8 @@ entity, or nil."
 
   (defconst git-identity--repo-url-pattern
     (rx bol
-        ;; Allow URLs of git-remote-hg: https://github.com/felipec/git-remote-hg
+        ;; Allow URLs of Git repositories with git-remote-hg backend:
+        ;; <https://github.com/felipec/git-remote-hg>
         (? "hg::")
         (or (and (?  (eval git-identity--scp-user-pattern) "@")
                  (group (eval git-identity--host-pattern))
@@ -260,7 +260,15 @@ entity, or nil."
       (error "Failed to match URL: %s" url))))
 
 (defun git-identity--inside-dirs-p (target maybe-ancestors)
-  "Return non-nil if TARGET is a descendant of any of MAYBE-ANCESTORS."
+  "Return non-nil if a directory is a descendant of directories.
+
+This function returns non-nil if the target is a descendant of
+one of the directories in the list.
+
+TARGET must be the root directory of a repository.
+
+MAYBE-ANCESTORS is a list of directories of an identity in
+`git-identity-list'."
   (let ((abs-target (expand-file-name target)))
     (--some (f-ancestor-of-p (expand-file-name it) abs-target)
             maybe-ancestors)))
