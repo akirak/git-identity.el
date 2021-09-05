@@ -1,6 +1,6 @@
 ;;; git-identity.el --- Identity management for (ma)git -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019,2020 Akira Komamura
+;; Copyright (C) 2019-2021 Akira Komamura
 
 ;; Author: Akira Komamura <akira.komamura@gmail.com>
 ;; Version: 0.1.2
