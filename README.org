@@ -122,6 +122,10 @@ matching a Git URL.
 This can be used to determine the clone destination of a repository
 respecting your configuration.
 ** Changelog
+*** 0.2.0 [2021-09-05 Sun]
+- Add: Make several functions public by renaming. =git-identity-username=, =git-identity-email=, =git-identity-guess-identity=, =git-identity-git-url-host=, and =git-identity-git-url-directory=.
+- Add =git-identity-ancestor-directories-from-url= function.
+- Change: If there are multiple identities matching the same domain of a URL, pick one without organizations.
 *** 0.1.2 [2020-12-23 Wed]
 - Add support for organizations and multiple identities on the same hosts
 *** 0.1.1 [2020-01-25 Sat]
