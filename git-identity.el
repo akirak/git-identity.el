@@ -214,6 +214,16 @@ is the matching ancestor directory and IDENTITY is an item of
                (list 'ancestor ancestor ent)))
            git-identity-list))
 
+(defun git-identity-ancestor-directories-from-url (url)
+  "Return a list of possible ancestors matching a Git URL.
+
+This function returns the :dirs value of an identity matching the
+url. This can be used, for example, to determine possible values
+of an ancestor directory into which you clone a repository."
+  (when-let (identity (git-identity-guess-identity
+                       :url url :directory nil :verbose nil))
+    (plist-get (cdr identity) :dirs)))
+
 (eval-and-compile
   (defconst git-identity--xalpha
     (let* ((safe "-$=_@.&+")

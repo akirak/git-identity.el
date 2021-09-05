@@ -165,6 +165,13 @@
                       :url nil
                       :directory "~/work/mycompany.com/xxx/"
                       :verbose nil))
-                :to-equal "akira.komamura@mycompany.com")))))
+                :to-equal "akira.komamura@mycompany.com"))))
+
+  (describe "git-identity-ancestor-directories-from-url"
+    (it "returns a list of directories"
+      (let ((git-identity-list git-identity-test-identity-list))
+        (expect (git-identity-ancestor-directories-from-url
+                 "git@github.com:my-company-org/hello.git")
+                :to-equal '("~/work/mycompany.com/"))))))
 
 (provide 'git-identity-test)
