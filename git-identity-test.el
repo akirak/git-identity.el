@@ -5,6 +5,30 @@
 
 ;; Based on the specification of git urls in the man page of git-push (1) for Git 2.28.0.
 
+(defconst git-identity-test-identity-list
+  '(("akira.komamura@gmail.com"
+     :name "Akira Komamura"
+     :domains ("github.com")
+     :exclude-organizations ("my-company-org")
+     :dirs ("~/work/github.com/"))
+    ("akira.komamura@mycompany.com"
+     :name "My name in the local language"
+     :organizations ("my-company-org")
+     :domains ("github.com" "mycompany.com")
+     :dirs ("~/work/mycompany.com/"))))
+
+(describe "Identity operations"
+  (describe "git-identity-username"
+    (it "Retrieves the user name of an identity"
+      (let ((git-identity-list git-identity-test-identity-list))
+        (expect (git-identity-username (car git-identity-list))
+                :to-equal "Akira Komamura"))))
+  (describe "git-identity-email"
+    (it "Retrieve the email address of an identity"
+      (let ((git-identity-list git-identity-test-identity-list))
+        (expect (git-identity-email (nth 1 git-identity-list))
+                :to-equal "akira.komamura@mycompany.com")))))
+
 (describe "git-identity--host-in-git-url"
 
   (it "matches an SSH URL"

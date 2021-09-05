@@ -106,12 +106,12 @@ identity setting."
   :type 'boolean)
 
 ;;;; Identity operations
-(defun git-identity--username (identity)
+(defun git-identity-username (identity)
   "Extract the user name in IDENTITY or return the default."
   (or (plist-get (cdr identity) :name)
       (git-identity--default-username)))
 
-(defun git-identity--email (identity)
+(defun git-identity-email (identity)
   "Extract the email in IDENTITY."
   (car identity))
 
@@ -128,13 +128,16 @@ identity setting."
 
 ;;;; Guessing identity for the current repository
 
-(defun git-identity--guess-identity ()
-  "Pick an identity which seems suitable for the current repo."
+(defun git-identity-guess-identity ()
+  "Pick an identity which seems suitable for the current repo.
+
+It returns an item of `git-identity-list' if there is a matching
+entity, or nil."
   (-some--> (if-let (url (or (git-identity--git-config-get "remote.origin.pushurl")
                              (git-identity--git-config-get "remote.origin.url")))
-                (or (git-identity--guess-identity-by-url url)
-                    (git-identity--guess-identity-by-dir default-directory))
-              (git-identity--guess-identity-by-dir default-directory))
+                (or (git-identity-guess-identity-by-url url)
+                    (git-identity-guess-identity-by-dir default-directory))
+              (git-identity-guess-identity-by-dir default-directory))
     (pcase it
       (`(domain ,domain ,ent)
        (message "Chosen an identity based on domain %s" domain)
@@ -143,8 +146,13 @@ identity setting."
        (message "Chosen an identity based on an ancestor directory %s" ancestor)
        ent))))
 
-(defun git-identity--guess-identity-by-url (url)
-  "Pick an identity from `git-identity-list' based on URL."
+(defun git-identity-guess-identity-by-url (url)
+  "Pick an identity from `git-identity-list' based on URL.
+
+This is a subcase of `git-identity-guess-identity'.
+
+It returns an item of `git-identity-list' if there is a matching
+entity, or nil."
   (let ((domain (git-identity--host-in-git-url url))
         (remote-dirs (-some--> (git-identity--dir-in-git-url url)
                        (split-string it "/")
@@ -177,8 +185,13 @@ identity setting."
                      nil)))
         (list 'domain domain it)))))
 
-(defun git-identity--guess-identity-by-dir (dir)
-  "Pick an identity from `git-identity-list' based on DIR."
+(defun git-identity-guess-identity-by-dir (dir)
+  "Pick an identity from `git-identity-list' based on DIR.
+
+This is a subcase of `git-identity-guess-identity'.
+
+It returns an item of `git-identity-list' if there is a matching
+entity, or nil."
   (cl-some (lambda (ent)
              (when-let (ancestor (git-identity--inside-dirs-p
                                   dir
@@ -261,7 +274,7 @@ identity setting."
   (let ((input (completing-read prompt git-identity-list
                                 nil nil nil nil
                                 (car
-                                 (git-identity--guess-identity)))))
+                                 (git-identity-guess-identity)))))
     (or (assoc input git-identity-list)
         (if (git-identity--validate-mail-address input)
             (let* ((name (read-string "Name: "))
@@ -317,8 +330,8 @@ When NOCONFIRM is non-nil, confirmation is skipped."
   (funcall (if noconfirm
                #'git-identity--git-config-set-noconfirm
              #'git-identity--git-config-set)
-           "user.name" (git-identity--username identity)
-           "user.email" (git-identity--email identity)))
+           "user.name" (git-identity-username identity)
+           "user.email" (git-identity-email identity)))
 
 ;;;; Hydra
 
@@ -357,28 +370,28 @@ E-mail: %s(git-identity--git-config-get \"user.email\")
         (local-name (git-identity--git-config-get "user.name" "--local"))
         (global-email (git-identity--git-config-get "user.email" "--global"))
         (global-name (git-identity--git-config-get "user.name" "--global"))
-        (expected-identity (git-identity--guess-identity)))
+        (expected-identity (git-identity-guess-identity)))
     (cond
      ;; No identity is configured yet, but there is an expected identity.
      ((and (or local-email global-email)
            (string-equal (or local-email global-email)
-                         (git-identity--email expected-identity))
+                         (git-identity-email expected-identity))
            (string-equal (or local-name global-name)
-                         (git-identity--username expected-identity))))
+                         (git-identity-username expected-identity))))
      ((not (git-identity--has-identity-p))
       (if (and expected-identity
                (yes-or-no-p
                 (format "Set the identity in %s to \"%s\" <%s>? "
                         (git-identity--find-repo)
-                        (git-identity--username expected-identity)
-                        (git-identity--email expected-identity))))
+                        (git-identity-username expected-identity)
+                        (git-identity-email expected-identity))))
           (git-identity--set-identity expected-identity 'noconfirm)
         (git-identity-set-identity "A proper identity is not set. Select one: ")))
      ;; There is no local setting, and the global setting is contradictory
      ;; with the expectation. Ask if you want to apply the local setting.
      ((and git-identity-verify
            (not local-email)
-           (not (equal (git-identity--email expected-identity)
+           (not (equal (git-identity-email expected-identity)
                        global-email))
            (yes-or-no-p
             (format "This repository (%s) is supposed to have an identity of\n\
@@ -387,10 +400,10 @@ because of a global setting.\n\
 Apply the expected identity \"%s\" <%s>\n\
 to this repository? "
                     (git-identity--find-repo)
-                    (git-identity--email expected-identity)
+                    (git-identity-email expected-identity)
                     global-email
-                    (git-identity--username expected-identity)
-                    (git-identity--email expected-identity))))
+                    (git-identity-username expected-identity)
+                    (git-identity-email expected-identity))))
       (git-identity--set-identity expected-identity 'noconfirm)))))
 
 
