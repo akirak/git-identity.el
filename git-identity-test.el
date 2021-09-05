@@ -14,6 +14,7 @@
     ("akira.komamura@mycompany.com"
      :name "My name in the local language"
      :organizations ("my-company-org")
+     :exclude-organizations ("my-another-private-org")
      :domains ("github.com" "mycompany.com")
      :dirs ("~/work/mycompany.com/"))))
 
