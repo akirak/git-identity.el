@@ -144,7 +144,9 @@ Messages buffer."
   (pcase (or (when url
                (git-identity--match-identity-on-url url))
              (when directory
-               (git-identity--match-identity-on-directory directory)))
+               (git-identity--match-identity-on-directory directory))
+             (when url
+               (git-identity--match-identity-on-url url :fallback t)))
     (`(domain ,domain ,ent)
      (when verbose
        (message "Chosen an identity based on domain %s" domain))
@@ -164,42 +166,59 @@ because it IS the URL the user uses to push his/her changes."
   (or (git-identity--git-config-get "remote.origin.pushurl")
       (git-identity--git-config-get "remote.origin.url")))
 
-(defun git-identity--match-identity-on-url (url)
+(cl-defun git-identity--match-identity-on-url (url &key fallback)
   "Return the matching information of an IDENTITY against URL.
 
 This function returns '(domain DOMAIN IDENTITY) where DOMAIN is a
-string and IDENTITY is an item of `git-identity-list'."
+string and IDENTITY is an item of `git-identity-list'.
+
+When FALLBACK is non-nil and there are multiple identities
+matching the url, it tries to pick one without organizations."
   (let ((domain (git-identity-git-url-host url))
         (remote-dirs (-some--> (git-identity-git-url-directory url)
                        (split-string it "/")
                        (-map #'downcase it))))
-    (cl-labels
-        ((match-domain (domains)
-                       (-any-p (lambda (domain-pattern)
-                                 (when (stringp domain-pattern)
-                                   (string-match-p (rx-to-string `(and (or bos ".")
-                                                                       ,domain-pattern
-                                                                       eos))
-                                                   domain)))
-                               domains))
-         (match-org (organizations)
-                    (cl-intersection remote-dirs (-map #'downcase organizations)
-                                     :test #'string-equal)))
-      (-some--> (pcase (-filter (pcase-lambda (`(_ . ,plist))
-                                  (and (match-domain (plist-get plist :domains))
-                                       (not (match-org (plist-get plist :exclude-organizations)))))
-                                git-identity-list)
-                  ('() nil)
-                  (`(,identity)
-                   identity)
-                  (matches
-                   (if-let (identity (-find (pcase-lambda (`(_ . ,plist))
-                                              (match-org (plist-get plist :organizations)))
-                                            matches))
-                       identity
-                     (message "There are multiple matches matching the domain %s" domain)
-                     nil)))
-        (list 'domain domain it)))))
+    (when-let (identity
+               (cl-flet
+                   ((match-orgs (organizations)
+                                (cl-intersection remote-dirs
+                                                 (-map #'downcase organizations)
+                                                 :test #'string-equal)))
+                 (pcase (->> git-identity-list
+                             (-filter (pcase-lambda (`(_ . ,plist))
+                                        (let ((domains (plist-get plist :domains))
+                                              (excluded-orgs (plist-get plist :exclude-organizations)))
+                                          (and domains
+                                               ;; The domain should match one of the domains.
+                                               (string-match-p (rx-to-string `(and (or bos ".")
+                                                                                   (or ,@domains)
+                                                                                   eos))
+                                                               domain)
+                                               ;; The directory should never match any of the blacklist.
+                                               (not (match-orgs excluded-orgs)))))))
+                   ('() nil)
+                   ;; If there is only one matching identity, use it
+                   (`(,identity)
+                    ;;  unless it has an organization
+                    ;; (unless (plist-get (cdr identity) :organizations)
+                    ;;   identity)
+                    identity)
+                   ;; If there are multiple matches, try to pick one smartly
+                   (matches
+                    (if-let (identity (or (-find (lambda (x)
+                                                   ;; Prefer one that matches one of the organizations
+                                                   (match-orgs (plist-get (cdr x) :organizations)))
+                                                 matches)
+                                          (when fallback
+                                            (-find (lambda (x)
+                                                     ;; Prefer one without organizations
+                                                     ;; (only in fallback mode)
+                                                     (not (plist-get (cdr x) :organizations)))
+                                                   matches))))
+                        identity
+                      (message "There are multiple matches matching the domain %s" domain)
+                      (car matches))))))
+      (list 'domain domain identity))))
 
 (defun git-identity--match-identity-on-directory (directory)
   "Return the matching information of an IDENTITY against DIRECTORY.
