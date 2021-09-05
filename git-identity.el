@@ -153,8 +153,8 @@ This is a subcase of `git-identity-guess-identity'.
 
 It returns an item of `git-identity-list' if there is a matching
 entity, or nil."
-  (let ((domain (git-identity--host-in-git-url url))
-        (remote-dirs (-some--> (git-identity--dir-in-git-url url)
+  (let ((domain (git-identity-git-url-host url))
+        (remote-dirs (-some--> (git-identity-git-url-directory url)
                        (split-string it "/")
                        (-map #'downcase it))))
     (cl-labels
@@ -201,7 +201,6 @@ entity, or nil."
 
 (eval-and-compile
   (defconst git-identity--xalpha
-    ;; TODO: Add thorough tests and fix this pattern
     (let* ((safe "-$=_@.&+")
            (extra "!*(),~")
            ;; I don't think people would want URLs containing
@@ -245,15 +244,15 @@ entity, or nil."
         (?  "/")
         eol)))
 
-(defun git-identity--host-in-git-url (url)
-  "Extract the host from URL of a Git repository."
+(defun git-identity-git-url-host (url)
+  "Extract the host from the URL of a Git repository."
   (save-match-data
     (if (string-match git-identity--repo-url-pattern url)
         (or (match-string 1 url)
             (match-string 2 url))
       (error "Failed to match URL: %s" url))))
 
-(defun git-identity--dir-in-git-url (url)
+(defun git-identity-git-url-directory (url)
   "Extract all but last path components of a Git repository URL."
   (save-match-data
     (if (string-match git-identity--repo-url-pattern url)

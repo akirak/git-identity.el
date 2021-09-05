@@ -29,110 +29,111 @@
         (expect (git-identity-email (nth 1 git-identity-list))
                 :to-equal "akira.komamura@mycompany.com")))))
 
-(describe "git-identity--host-in-git-url"
+(describe "Parsing Git URLs"
+  (describe "git-identity-git-url-host"
 
-  (it "matches an SSH URL"
-    (expect (git-identity--host-in-git-url "ssh://github.com/path/to/repo.git")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "ssh://github.com:22/path/to/repo.git/")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "ssh://john.blah@github.com/path/to/repo.git/")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "ssh://user-13@github.com:22/path/to/repo.git/")
-            :to-equal "github.com"))
+    (it "matches an SSH URL"
+      (expect (git-identity-git-url-host "ssh://github.com/path/to/repo.git")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "ssh://github.com:22/path/to/repo.git/")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "ssh://john.blah@github.com/path/to/repo.git/")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "ssh://user-13@github.com:22/path/to/repo.git/")
+              :to-equal "github.com"))
 
-  (it "matches an Git URL"
-    (expect (git-identity--host-in-git-url "git://github.com/owner/repo.git")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "git://github.com:22/owner/repo.git/")
-            :to-equal "github.com"))
+    (it "matches an Git URL"
+      (expect (git-identity-git-url-host "git://github.com/owner/repo.git")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "git://github.com:22/owner/repo.git/")
+              :to-equal "github.com"))
 
-  (it "matches an HTTPS URL"
-    (expect (git-identity--host-in-git-url "https://github.com/owner/repo")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "https://github.com/owner/repo/")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "https://github.com:22/owner/repo.git")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "https://github.com:22/owner/repo.git/")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "https://hg.sr.ht/~geyaeb/haskell-pdftotext")
-            :to-equal "hg.sr.ht"))
+    (it "matches an HTTPS URL"
+      (expect (git-identity-git-url-host "https://github.com/owner/repo")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "https://github.com/owner/repo/")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "https://github.com:22/owner/repo.git")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "https://github.com:22/owner/repo.git/")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "https://hg.sr.ht/~geyaeb/haskell-pdftotext")
+              :to-equal "hg.sr.ht"))
 
-  (it "matches URLs of git-remote-hg"
-    (expect (git-identity--host-in-git-url "hg::https://hg.sr.ht/~geyaeb/haskell-pdftotext")
-            :to-equal "hg.sr.ht"))
+    (it "matches URLs of git-remote-hg"
+      (expect (git-identity-git-url-host "hg::https://hg.sr.ht/~geyaeb/haskell-pdftotext")
+              :to-equal "hg.sr.ht"))
 
-  (it "matches an FTP URL"
-    (expect (git-identity--host-in-git-url "ftp://github.com/owner/repo.git")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "ftps://github.com/owner/repo.git/")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "ftp://github.com:22/owner/repo.git")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "ftps://github.com:22/owner/repo.git/")
-            :to-equal "github.com"))
+    (it "matches an FTP URL"
+      (expect (git-identity-git-url-host "ftp://github.com/owner/repo.git")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "ftps://github.com/owner/repo.git/")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "ftp://github.com:22/owner/repo.git")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "ftps://github.com:22/owner/repo.git/")
+              :to-equal "github.com"))
 
-  (it "matches an SCP-like syntax"
-    (expect (git-identity--host-in-git-url "git@github.com:owner/repo.git")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "github.com:owner/repo.git")
-            :to-equal "github.com")
-    (expect (git-identity--host-in-git-url "git@gist.github.com:1234123412341234.git")
-            :to-equal "gist.github.com")
-    (expect (git-identity--host-in-git-url "xxx@yyy.host.com:/owner/repo.git")
-            :to-equal "yyy.host.com")))
+    (it "matches an SCP-like syntax"
+      (expect (git-identity-git-url-host "git@github.com:owner/repo.git")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "github.com:owner/repo.git")
+              :to-equal "github.com")
+      (expect (git-identity-git-url-host "git@gist.github.com:1234123412341234.git")
+              :to-equal "gist.github.com")
+      (expect (git-identity-git-url-host "xxx@yyy.host.com:/owner/repo.git")
+              :to-equal "yyy.host.com")))
 
-(describe "git-identity--dir-in-git-url"
+  (describe "git-identity-git-url-directory"
 
-  (it "matches an SSH URL"
-    (expect (git-identity--dir-in-git-url "ssh://github.com/path/to/repo.git")
-            :to-equal "path/to")
-    (expect (git-identity--dir-in-git-url "ssh://github.com:22/path/to/repo.git/")
-            :to-equal "path/to")
-    (expect (git-identity--dir-in-git-url "ssh://john.blah@github.com/path/to/repo.git/")
-            :to-equal "path/to")
-    (expect (git-identity--dir-in-git-url "ssh://user-13@github.com:22/path/to/repo.git/")
-            :to-equal "path/to"))
+    (it "matches an SSH URL"
+      (expect (git-identity-git-url-directory "ssh://github.com/path/to/repo.git")
+              :to-equal "path/to")
+      (expect (git-identity-git-url-directory "ssh://github.com:22/path/to/repo.git/")
+              :to-equal "path/to")
+      (expect (git-identity-git-url-directory "ssh://john.blah@github.com/path/to/repo.git/")
+              :to-equal "path/to")
+      (expect (git-identity-git-url-directory "ssh://user-13@github.com:22/path/to/repo.git/")
+              :to-equal "path/to"))
 
-  (it "matches an Git URL"
-    (expect (git-identity--dir-in-git-url "git://github.com/owner/repo.git")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "git://github.com:22/owner/repo.git/")
-            :to-equal "owner"))
+    (it "matches an Git URL"
+      (expect (git-identity-git-url-directory "git://github.com/owner/repo.git")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "git://github.com:22/owner/repo.git/")
+              :to-equal "owner"))
 
-  (it "matches an HTTPS URL"
-    (expect (git-identity--dir-in-git-url "https://github.com/owner/repo")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "https://github.com/owner/repo/")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "https://github.com:22/owner/repo.git")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "https://github.com:22/owner/repo.git/")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "https://hg.sr.ht/~geyaeb/haskell-pdftotext")
-            :to-equal "~geyaeb"))
+    (it "matches an HTTPS URL"
+      (expect (git-identity-git-url-directory "https://github.com/owner/repo")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "https://github.com/owner/repo/")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "https://github.com:22/owner/repo.git")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "https://github.com:22/owner/repo.git/")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "https://hg.sr.ht/~geyaeb/haskell-pdftotext")
+              :to-equal "~geyaeb"))
 
-  (it "matches URLs of git-remote-hg"
-    (expect (git-identity--dir-in-git-url "hg::https://hg.sr.ht/~geyaeb/haskell-pdftotext")
-            :to-equal "~geyaeb"))
+    (it "matches URLs of git-remote-hg"
+      (expect (git-identity-git-url-directory "hg::https://hg.sr.ht/~geyaeb/haskell-pdftotext")
+              :to-equal "~geyaeb"))
 
-  (it "matches an FTP URL"
-    (expect (git-identity--dir-in-git-url "ftp://github.com/owner/repo.git")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "ftps://github.com/owner/repo.git/")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "ftp://github.com:22/owner/repo.git")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "ftps://github.com:22/owner/repo.git/")
-            :to-equal "owner"))
+    (it "matches an FTP URL"
+      (expect (git-identity-git-url-directory "ftp://github.com/owner/repo.git")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "ftps://github.com/owner/repo.git/")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "ftp://github.com:22/owner/repo.git")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "ftps://github.com:22/owner/repo.git/")
+              :to-equal "owner"))
 
-  (it "matches an SCP-like syntax"
-    (expect (git-identity--dir-in-git-url "git@github.com:owner/repo.git")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "github.com:owner/repo.git")
-            :to-equal "owner")
-    (expect (git-identity--dir-in-git-url "xxx@yyy.host.com:/owner/repo.git")
-            :to-equal "owner")))
+    (it "matches an SCP-like syntax"
+      (expect (git-identity-git-url-directory "git@github.com:owner/repo.git")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "github.com:owner/repo.git")
+              :to-equal "owner")
+      (expect (git-identity-git-url-directory "xxx@yyy.host.com:/owner/repo.git")
+              :to-equal "owner"))))
 
 (provide 'git-identity-test)
