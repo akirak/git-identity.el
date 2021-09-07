@@ -5,30 +5,21 @@
 
 ;; Based on the specification of git urls in the man page of git-push (1) for Git 2.28.0.
 
-(defconst git-identity-test-identity-list
-  '(("akira.komamura@gmail.com"
-     :name "Akira Komamura"
-     :domains ("github.com")
-     :exclude-organizations ("my-company-org" "my-another-private-org")
-     :dirs ("~/work/github.com/"))
-    ("akira.komamura@mycompany.com"
-     :name "My name in the local language"
-     :organizations ("my-company-org")
-     :exclude-organizations ("my-another-private-org")
-     :domains ("github.com" "mycompany.com")
-     :dirs ("~/work/mycompany.com/"))))
-
 (describe "Identity operations"
-  (describe "git-identity-username"
-    (it "Retrieves the user name of an identity"
-      (let ((git-identity-list git-identity-test-identity-list))
+  (let ((git-identity-list '(("akira.komamura@gmail.com"
+                              :name "Akira Komamura"
+                              :domains ("github.com")
+                              :exclude-organizations ("my-company-org" "my-another-private-org")
+                              :dirs ("~/work/github.com/")))))
+    (describe "git-identity-username"
+      (it "Retrieves the user name of an identity"
         (expect (git-identity-username (car git-identity-list))
-                :to-equal "Akira Komamura"))))
-  (describe "git-identity-email"
-    (it "Retrieve the email address of an identity"
-      (let ((git-identity-list git-identity-test-identity-list))
-        (expect (git-identity-email (nth 1 git-identity-list))
-                :to-equal "akira.komamura@mycompany.com")))))
+                :to-equal "Akira Komamura")))
+    (describe "git-identity-email"
+      (it "Retrieve the email address of an identity"
+        (let ((git-identity-list identity-list-1))
+          (expect (git-identity-email (nth 1 git-identity-list))
+                  :to-equal "akira.komamura@mycompany.com"))))))
 
 (describe "Parsing Git URLs"
   (describe "git-identity-git-url-host"
@@ -138,41 +129,139 @@
               :to-equal "owner"))))
 
 (describe "Detecting an identity"
-  (describe "git-identity-guess-identity"
-    (it "respect :domains"
-      (let ((git-identity-list git-identity-test-identity-list))
-        (expect (car (git-identity-guess-identity
-                      :url "git@github.com:akirak/git-identity.el.git"
-                      :directory nil
-                      :verbose nil))
-                :to-equal "akira.komamura@gmail.com")))
-    (it "respect :domains and :organizations"
-      (let ((git-identity-list git-identity-test-identity-list))
-        (expect (car (git-identity-guess-identity
-                      :url "git@github.com:my-company-org/private-project.git"
-                      :directory nil
-                      :verbose nil))
-                :to-equal "akira.komamura@mycompany.com")))
-    (it "respect :domains and :exclude-organizations"
-      (let ((git-identity-list git-identity-test-identity-list))
-        (expect (git-identity-guess-identity
-                 :url "git@github.com:my-another-private-org/xxx.git"
-                 :directory nil
-                 :verbose nil)
-                :to-be nil)))
-    (it "respect :dirs"
-      (let ((git-identity-list git-identity-test-identity-list))
-        (expect (car (git-identity-guess-identity
-                      :url nil
-                      :directory "~/work/mycompany.com/xxx/"
-                      :verbose nil))
-                :to-equal "akira.komamura@mycompany.com"))))
+  (let* ((identity-list-1 '(("akira.komamura@gmail.com"
+                             :name "Akira Komamura"
+                             :domains ("github.com")
+                             :exclude-organizations ("my-company-org" "my-another-private-org")
+                             :dirs ("~/work/github.com/"))
+                            ("akira.komamura@mycompany.com"
+                             :name "My name in the local language"
+                             :organizations ("my-company-org")
+                             :exclude-organizations ("my-another-private-org")
+                             :domains ("github.com" "mycompany.com")
+                             :dirs ("~/work/mycompany.com/"))))
+         (identity-list-2 (reverse identity-list-1)))
+    (describe "git-identity-guess-identity (dataset 1)"
+      (it "respect :domains"
+        (let ((git-identity-list identity-list-1)
+              (git-identity-limit-to-organizations nil))
+          (expect (car (git-identity-guess-identity
+                        :url "git@github.com:akirak/git-identity.el.git"
+                        :directory nil
+                        :verbose nil))
+                  :to-equal "akira.komamura@gmail.com"))
+        (let ((git-identity-list identity-list-1)
+              (git-identity-limit-to-organizations t))
+          (expect (car (git-identity-guess-identity
+                        :url "git@github.com:akirak/git-identity.el.git"
+                        :directory nil
+                        :verbose nil))
+                  :to-equal "akira.komamura@gmail.com")))
+      (it "respect :domains and :organizations"
+        (let ((git-identity-list identity-list-1)
+              (git-identity-limit-to-organizations nil))
+          (expect (car (git-identity-guess-identity
+                        :url "git@github.com:my-company-org/private-project.git"
+                        :directory nil
+                        :verbose nil))
+                  :to-equal "akira.komamura@mycompany.com"))
+        (let ((git-identity-list identity-list-1)
+              (git-identity-limit-to-organizations t))
+          (expect (car (git-identity-guess-identity
+                        :url "git@github.com:my-company-org/private-project.git"
+                        :directory nil
+                        :verbose nil))
+                  :to-equal "akira.komamura@mycompany.com")))
+      (it "respect :domains and :exclude-organizations"
+        (let ((git-identity-list identity-list-1)
+              (git-identity-limit-to-organizations nil))
+          (expect (git-identity-guess-identity
+                   :url "git@github.com:my-another-private-org/xxx.git"
+                   :directory nil
+                   :verbose nil)
+                  :to-be nil))
+        (let ((git-identity-list identity-list-1)
+              (git-identity-limit-to-organizations t))
+          (expect (git-identity-guess-identity
+                   :url "git@github.com:my-another-private-org/xxx.git"
+                   :directory nil
+                   :verbose nil)
+                  :to-be nil)))
+      (it "respect :dirs"
+        (let ((git-identity-list identity-list-1)
+              (git-identity-limit-to-organizations nil))
+          (expect (car (git-identity-guess-identity
+                        :url nil
+                        :directory "~/work/mycompany.com/xxx/"
+                        :verbose nil))
+                  :to-equal "akira.komamura@mycompany.com"))
+        (let ((git-identity-list identity-list-1)
+              (git-identity-limit-to-organizations t))
+          (expect (car (git-identity-guess-identity
+                        :url nil
+                        :directory "~/work/mycompany.com/xxx/"
+                        :verbose nil))
+                  :to-equal "akira.komamura@mycompany.com"))))
 
-  (describe "git-identity-ancestor-directories-from-url"
-    (it "returns a list of directories"
-      (let ((git-identity-list git-identity-test-identity-list))
-        (expect (git-identity-ancestor-directories-from-url
-                 "git@github.com:my-company-org/hello.git")
-                :to-equal '("~/work/mycompany.com/"))))))
+    (describe "git-identity-guess-identity (dataset 2)"
+      (it "respect :domains"
+        (let ((git-identity-list identity-list-2)
+              (git-identity-limit-to-organizations nil))
+          (expect (car (git-identity-guess-identity
+                        :url "git@github.com:akirak/git-identity.el.git"
+                        :directory nil
+                        :verbose nil))
+                  :to-equal "akira.komamura@mycompany.com"))
+        (let ((git-identity-list identity-list-2)
+              (git-identity-limit-to-organizations t))
+          (expect (car (git-identity-guess-identity
+                        :url "git@github.com:akirak/git-identity.el.git"
+                        :directory nil
+                        :verbose nil))
+                  :to-equal "akira.komamura@gmail.com")))
+      (it "respect :domains and :organizations"
+        (let ((git-identity-list identity-list-2)
+              (git-identity-limit-to-organizations nil))
+          (expect (car (git-identity-guess-identity
+                        :url "git@github.com:my-company-org/private-project.git"
+                        :directory nil
+                        :verbose nil))
+                  :to-equal "akira.komamura@mycompany.com"))
+        (let ((git-identity-list identity-list-2)
+              (git-identity-limit-to-organizations t))
+          (expect (car (git-identity-guess-identity
+                        :url "git@github.com:my-company-org/private-project.git"
+                        :directory nil
+                        :verbose nil))
+                  :to-equal "akira.komamura@mycompany.com")))
+      (it "respect :domains and :exclude-organizations"
+        (let ((git-identity-list identity-list-2)
+              (git-identity-limit-to-organizations nil))
+          (expect (git-identity-guess-identity
+                   :url "git@github.com:my-another-private-org/xxx.git"
+                   :directory nil
+                   :verbose nil)
+                  :to-be nil))
+        (let ((git-identity-list identity-list-2)
+              (git-identity-limit-to-organizations t))
+          (expect (git-identity-guess-identity
+                   :url "git@github.com:my-another-private-org/xxx.git"
+                   :directory nil
+                   :verbose nil)
+                  :to-be nil)))
+      (it "respect :dirs"
+        (let ((git-identity-list identity-list-2))
+          (expect (car (git-identity-guess-identity
+                        :url nil
+                        :directory "~/work/mycompany.com/xxx/"
+                        :verbose nil))
+                  :to-equal "akira.komamura@mycompany.com"))))
+    
+    (describe "git-identity-ancestor-directories-from-url"
+      (it "returns a list of directories"
+        (let ((git-identity-list identity-list-1))
+          (expect (git-identity-ancestor-directories-from-url
+                   "git@github.com:my-company-org/hello.git")
+                  :to-equal '("~/work/mycompany.com/")))))))
 
 (provide 'git-identity-test)

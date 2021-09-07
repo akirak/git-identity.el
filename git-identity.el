@@ -89,6 +89,22 @@
                                     ((const :tag "Directories" :dirs)
                                      (repeat string))))))
 
+(defcustom git-identity-limit-to-organizations nil
+  "Whether to limit identities to their organizations.
+
+If this option is set to non-nil and an identity in
+`git-identity-list' has :organizations property, the identity
+will not match a repository that matches its domain but not any
+of its organizations.
+
+If you want to prevent a private identity, e.g. an e-mail address
+issued by your client, from matching your public repositories,
+it is recommended to set this value to t.
+
+For backward compatibility, the default value is nil."
+  :group 'git-identity
+  :type 'boolean)
+
 (defcustom git-identity-verify t
   "When non-nil, check if the identity is consistent.
 
@@ -187,13 +203,18 @@ matching the url, it tries to pick one without organizations."
                  (pcase (->> git-identity-list
                              (-filter (pcase-lambda (`(_ . ,plist))
                                         (let ((domains (plist-get plist :domains))
-                                              (excluded-orgs (plist-get plist :exclude-organizations)))
+                                              (excluded-orgs (plist-get plist :exclude-organizations))
+                                              (orgs (plist-get plist :organizations)))
                                           (and domains
                                                ;; The domain should match one of the domains.
                                                (string-match-p (rx-to-string `(and (or bos ".")
                                                                                    (or ,@domains)
                                                                                    eos))
                                                                domain)
+                                               ;; Respect git-identity-limit-to-organizations
+                                               (or (not git-identity-limit-to-organizations)
+                                                   (not orgs)
+                                                   (match-orgs orgs))
                                                ;; The directory should never match any of the blacklist.
                                                (not (match-orgs excluded-orgs)))))))
                    ('() nil)
