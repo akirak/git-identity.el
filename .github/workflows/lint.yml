@@ -1,11 +1,11 @@
-name: 'test'
+name: 'package-lint'
 on: { push: { paths: [ '**.el' ] } }
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        emacs_version: ["25.1","25.2","25.3","26.1","26.2","26.3","27.1","27.2","snapshot"]
+        emacs_version: ["snapshot"]
     steps:
     - uses: purcell/setup-emacs@master
       with:
@@ -15,7 +15,7 @@ jobs:
       run: |
         cat <(jq -r '.nodes.root.inputs | map(.) | .[]' .nomake/flake.lock) \
             <(jq -r 'keys | .[]' .nomake/archive.lock) \
-             \
+            <(echo 'package-lint') \
             | xargs emacs -batch -l package --eval \
             "(progn
                 (push '(\"melpa\" . \"https://melpa.org/packages/\")
@@ -37,5 +37,7 @@ jobs:
           --eval "(setq byte-compile-error-on-warn t)" \
           -f batch-byte-compile 'git-identity.el'
     - run: |
-        emacs -l package --eval "(push '(\"melpa\" . \"https://melpa.org/packages/\") package-archives)" --eval "(package-initialize)" -L . -batch -l buttercup -f buttercup-run-discover "$PWD"
-      
+        emacs -l package --eval "(push '(\"melpa\" . \"https://melpa.org/packages/\") package-archives)" --eval "(package-initialize)" -L . -batch -l package-lint \
+          --eval "(setq package-lint-main-file \"git-identity.el\")" \
+          -f package-lint-batch-and-exit 'git-identity.el'
+      name: Run package-lint

@@ -333,8 +333,9 @@ MAYBE-ANCESTORS is a list of directories of an identity in
         (if (git-identity--validate-mail-address input)
             (let* ((name (read-string "Name: "))
                    (newent (list input :name name)))
-              (customize-set-variable git-identity-list
-                                      (cons newent git-identity-list)))
+              (customize-set-variable 'git-identity-list
+                                      (cons newent git-identity-list)
+                                      "Added an entry interactively"))
           (user-error "Not a valid mail address: %s" input)))))
 
 (defun git-identity--validate-mail-address (_input)
