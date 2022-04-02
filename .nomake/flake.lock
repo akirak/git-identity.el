@@ -1,0 +1,129 @@
+{
+  "nodes": {
+    "buttercup": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1648586608,
+        "narHash": "sha256-qGZYc9ECJ28ZjazpGUqY8Z7fdbdWCA0/ujtd0CWD8qA=",
+        "owner": "jorgenschaefer",
+        "repo": "emacs-buttercup",
+        "rev": "f5cbf97e1086441b2d6fa3ea240758b932c7c5e1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jorgenschaefer",
+        "repo": "emacs-buttercup",
+        "type": "github"
+      }
+    },
+    "dash": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1632096711,
+        "narHash": "sha256-oeIUEe5OGgij6IessN6bmS7re5r+D5BlrU4MOsaK3JE=",
+        "owner": "magnars",
+        "repo": "dash.el",
+        "rev": "da167c51e9fd167a48d06c7c0ee8e3ac7abd9718",
+        "type": "github"
+      },
+      "original": {
+        "owner": "magnars",
+        "repo": "dash.el",
+        "type": "github"
+      }
+    },
+    "f": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1624532602,
+        "narHash": "sha256-vsslMtF8dQm6cJYb07SxPO0rp44lfRONSxRHj3e52Ew=",
+        "owner": "rejeep",
+        "repo": "f.el",
+        "rev": "50af874cd19042f17c8686813d52569b1025c76a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rejeep",
+        "repo": "f.el",
+        "type": "github"
+      }
+    },
+    "git-identity": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1630843735,
+        "narHash": "sha256-YS2ReJIBgc8t9hJAcGQm2Zm8bj88C7roYeZ9mdrXzvM=",
+        "owner": "akirak",
+        "repo": "git-identity.el",
+        "rev": "e2620767694d8cd2860b632c47fbe92e20a9ef14",
+        "type": "github"
+      },
+      "original": {
+        "owner": "akirak",
+        "repo": "git-identity.el",
+        "type": "github"
+      }
+    },
+    "hydra": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1641110604,
+        "narHash": "sha256-AE3l5N0irSunycinznvthqjSG49sequndSY+lECFtIc=",
+        "owner": "abo-abo",
+        "repo": "hydra",
+        "rev": "9e9e00cb240ea1903ffd36a54956b3902c379d29",
+        "type": "github"
+      },
+      "original": {
+        "owner": "abo-abo",
+        "repo": "hydra",
+        "type": "github"
+      }
+    },
+    "lv": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1641110604,
+        "narHash": "sha256-AE3l5N0irSunycinznvthqjSG49sequndSY+lECFtIc=",
+        "owner": "abo-abo",
+        "repo": "hydra",
+        "rev": "9e9e00cb240ea1903ffd36a54956b3902c379d29",
+        "type": "github"
+      },
+      "original": {
+        "owner": "abo-abo",
+        "repo": "hydra",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "buttercup": "buttercup",
+        "dash": "dash",
+        "f": "f",
+        "git-identity": "git-identity",
+        "hydra": "hydra",
+        "lv": "lv",
+        "s": "s"
+      }
+    },
+    "s": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1623824393,
+        "narHash": "sha256-F0BrAlsxBskNzkyHriG3yNY+PZ7npYi1x98Ci5yVDAo=",
+        "owner": "magnars",
+        "repo": "s.el",
+        "rev": "08661efb075d1c6b4fa812184c1e5e90c08795a9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "magnars",
+        "repo": "s.el",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
