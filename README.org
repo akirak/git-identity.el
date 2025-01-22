@@ -3,7 +3,7 @@
 
 [[https://github.com/akirak/git-identity.el/workflows/CI/badge.svg?branch=master]]
 
-*Git now has [[https://git-scm.com/docs/git-config#_includes][includeIf]] option, so you don't need this package.*
+*Deprecation notice: Git now has [[https://git-scm.com/docs/git-config#_includes][includeIf]] option, so you won't need this package any longer. The author no longer maintains the package, so it may not work as expected with a recent version of magit.*
 
 This Emacs package lets you manage local Git identities, i.e. =user.name= and =user.email= options in =.git/config=, from inside Emacs. 
 It is primarily intended for users who meet all of the following assumptions:
